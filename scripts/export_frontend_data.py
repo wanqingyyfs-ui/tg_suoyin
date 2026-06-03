@@ -1,8 +1,7 @@
-﻿from pathlib import Path
+from pathlib import Path
 import json
 import re
 import sqlite3
-
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "rectg.db"
@@ -11,13 +10,11 @@ OUT_FILE = OUT_DIR / "data.json"
 SITEMAP_FILE = OUT_DIR / "sitemap.xml"
 ROBOTS_FILE = OUT_DIR / "robots.txt"
 
-
 TYPE_LABELS = {
     "channel": "频道",
     "group": "群组",
     "bot": "机器人",
 }
-
 
 DEFAULT_CATEGORY = {
     "channel": "🆕 新发现频道",
@@ -25,13 +22,11 @@ DEFAULT_CATEGORY = {
     "bot": "🤖 机器人",
 }
 
-
 SEO_KEYWORDS = {
     "新闻快讯": "吃瓜播报 一手资讯 热点追踪 国际新闻",
     "加密货币": "区块链资讯 Web3 新闻 市场动态",
     "影视剧集": "影视资讯 剧集推荐 观影讨论",
 }
-
 
 CATEGORY_ORDER = [
     "🆕 新发现频道",
@@ -61,33 +56,23 @@ CATEGORY_ORDER = [
 
 
 def make_id(username, url, title):
-    raw = ""
-
-    if username:
-        raw = username
-    elif url and "t.me/" in url:
-        raw = url.split("t.me/", 1)[1]
-        raw = raw.replace("joinchat/", "").split("?", 1)[0]
-    else:
+    raw = username or ""
+    if not raw and url and "t.me/" in url:
+        raw = url.split("t.me/", 1)[1].replace("joinchat/", "").split("?", 1)[0]
+    if not raw:
         raw = title or ""
-
     raw = raw.strip().lower()
     raw = re.sub(r"[^a-zA-Z0-9_\-\u4e00-\u9fa5]", "", raw)
-
     return raw or "item"
 
 
 def split_category(full_name):
     full_name = (full_name or "").strip()
-
     match = re.match(r"^(\S+)\s+(.*)$", full_name)
     if match:
-        icon = match.group(1)
-        name = match.group(2).strip()
+        icon, name = match.group(1), match.group(2).strip()
     else:
-        icon = ""
-        name = full_name
-
+        icon, name = "", full_name
     return {
         "icon": icon,
         "name": name,
@@ -103,6 +88,64 @@ def category_sort_key(category):
     return len(CATEGORY_ORDER)
 
 
+def init_ads_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ads (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            position        TEXT NOT NULL,
+            title           TEXT NOT NULL,
+            description     TEXT,
+            url             TEXT NOT NULL,
+            image_url       TEXT,
+            sort_order      INTEGER DEFAULT 0,
+            enabled         INTEGER DEFAULT 1,
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_ads_position_enabled_sort
+        ON ads(position, enabled, sort_order, id)
+        """
+    )
+    conn.commit()
+
+
+def load_ads(cur: sqlite3.Cursor) -> dict:
+    rows = cur.execute(
+        """
+        SELECT id, position, title, description, url, image_url, sort_order
+        FROM ads
+        WHERE enabled = 1
+        ORDER BY position COLLATE NOCASE, sort_order ASC, id ASC
+        """
+    ).fetchall()
+
+    items = []
+    positions = {}
+
+    for row in rows:
+        item = {
+            "id": row["id"],
+            "position": row["position"],
+            "title": row["title"],
+            "description": row["description"] or "",
+            "url": row["url"],
+            "imageUrl": row["image_url"] or "",
+            "sortOrder": row["sort_order"] or 0,
+        }
+        items.append(item)
+        positions.setdefault(row["position"], []).append(item)
+
+    return {
+        "items": items,
+        "positions": positions,
+    }
+
+
 def main():
     if not DB_PATH.exists():
         raise SystemExit(f"数据库不存在：{DB_PATH}")
@@ -111,16 +154,11 @@ def main():
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    rows = cur.execute("""
-        SELECT
-            title,
-            username,
-            url,
-            type,
-            count,
-            clean_desc,
-            description,
-            category
+    init_ads_table(conn)
+
+    rows = cur.execute(
+        """
+        SELECT title, username, url, type, count, clean_desc, description, category
         FROM entries
         WHERE keep = 1
           AND valid = 1
@@ -135,8 +173,10 @@ def main():
             COALESCE(category, ''),
             COALESCE(count, 0) DESC,
             title COLLATE NOCASE
-    """).fetchall()
+        """
+    ).fetchall()
 
+    ads = load_ads(cur)
     conn.close()
 
     type_map = {}
@@ -145,9 +185,7 @@ def main():
     for row in rows:
         entry_type = row["type"] or "channel"
         type_label = TYPE_LABELS.get(entry_type, entry_type)
-
         category = row["category"] or DEFAULT_CATEGORY.get(entry_type, "🌐 综合其他")
-
         title = row["title"] or row["username"] or row["url"] or "未命名"
         url = row["url"] or f"https://t.me/{row['username']}"
         count = row["count"] or 0
@@ -164,7 +202,6 @@ def main():
         type_map.setdefault(type_label, {})
         type_map[type_label].setdefault(category, [])
         type_map[type_label][category].append(item)
-
         category_seen[category] = split_category(category)
 
     categories = [
@@ -176,7 +213,6 @@ def main():
     for type_label in ["频道", "群组", "机器人"]:
         if type_label not in type_map:
             continue
-
         categories_for_type = []
         for category in sorted(type_map[type_label].keys(), key=category_sort_key):
             items = type_map[type_label][category]
@@ -185,7 +221,6 @@ def main():
                     "fullName": category,
                     "items": items,
                 })
-
         if categories_for_type:
             types.append({
                 "name": type_label,
@@ -195,6 +230,7 @@ def main():
     data = {
         "categories": categories,
         "types": types,
+        "ads": ads,
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -223,6 +259,7 @@ def main():
     print(f"✅ Categories: {len(categories)}")
     print(f"✅ Types: {len(types)}")
     print(f"✅ Items: {sum(len(c['items']) for t in types for c in t['categories'])}")
+    print(f"✅ Ads: {len(ads['items'])}")
 
 
 if __name__ == "__main__":
