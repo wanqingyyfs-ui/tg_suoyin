@@ -60,43 +60,45 @@ def extract_username(url: str):
 
 
 def parse_readme(readme_path: Path) -> list:
-    """解析 README.md，提取所有 t.me 链接。"""
-    text = readme_path.read_text(encoding="utf-8")
+    """?? README.md????? t.me ???"""
+    content = readme_path.read_text(encoding="utf-8")
     entries = []
-
     current_section = ""
 
-    for line in text.splitlines():
+    type_map = {
+        "??": "channel",
+        "??": "group",
+        "???": "bot",
+    }
+
+    for line in content.splitlines():
         if line.startswith("## "):
             heading = line.lstrip("# ").strip()
-            if heading in ("频道", "群组", "机器人"):
-                current_section = heading
-            else:
-                current_section = ""
+            current_section = heading if heading in type_map else ""
             continue
 
-        if not current_section:
-            continue
-
+        # ?? README ???
+        # | [??](https://t.me/sidehustleus) | 114 | ???????????????? |
         m = re.match(
-            r"\|\s*(.+?)\s*\|\s*\[([^\]]*)\]\(([^)]+)\)\s*\|",
+            r"\|\s*\[([^\]]+)\]\((https?://t\.me/[^)]+)\)\s*\|",
             line,
         )
-        if m:
-            name = m.group(1).strip()
-            url = m.group(3).strip()
-            if name in ("名称", "---"):
-                continue
 
-            type_map = {"频道": "channel", "群组": "group", "机器人": "bot"}
-            entry_type = type_map.get(current_section)
+        if not m:
+            continue
 
-            entries.append({
-                "name": name,
-                "url": url,
-                "username": extract_username(url),
-                "type_hint": entry_type,
-            })
+        name = m.group(1).strip()
+        url = m.group(2).strip()
+
+        if name in ("??", "??", "---"):
+            continue
+
+        entries.append({
+            "name": name,
+            "url": url,
+            "username": extract_username(url),
+            "type_hint": type_map.get(current_section),
+        })
 
     return entries
 

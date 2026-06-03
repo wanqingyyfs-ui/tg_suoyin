@@ -113,11 +113,25 @@
       "id": "社媒搬运"
     },
     {
+      "icon": "🏀",
+      "name": "体育运动",
+      "fullName": "🏀 体育运动",
+      "keywords": "",
+      "id": "体育运动"
+    },
+    {
       "icon": "👗",
       "name": "生活消费",
       "fullName": "👗 生活消费",
       "keywords": "",
       "id": "生活消费"
+    },
+    {
+      "icon": "🌍",
+      "name": "地区社群",
+      "fullName": "🌍 地区社群",
+      "keywords": "",
+      "id": "地区社群"
     },
     {
       "icon": "💬",
@@ -139,20 +153,6 @@
       "fullName": "🌐 综合其他",
       "keywords": "",
       "id": "综合其他"
-    },
-    {
-      "icon": "🏀",
-      "name": "体育运动",
-      "fullName": "🏀 体育运动",
-      "keywords": "",
-      "id": "体育运动"
-    },
-    {
-      "icon": "🌍",
-      "name": "地区社群",
-      "fullName": "🌍 地区社群",
-      "keywords": "",
-      "id": "地区社群"
     }
   ],
   "types": [
@@ -163,74 +163,11 @@
           "fullName": "🆕 新发现频道",
           "items": [
             {
-              "title": "副业",
-              "url": "https://t.me/sidehustleus",
-              "countStr": "114",
-              "desc": "关注副业赚钱、搞钱经验和独立开发",
-              "id": "sidehustleus"
-            },
-            {
-              "title": "技术拾荒者",
-              "url": "https://t.me/tech_scavenger",
-              "countStr": "56",
-              "desc": "分享优质技术文章、开源项目与实用工具",
-              "id": "tech_scavenger"
-            },
-            {
-              "title": "一个人的产品",
-              "url": "https://t.me/solo_product",
-              "countStr": "32",
-              "desc": "独立开发者、产品设计与运营经验",
-              "id": "solo_product"
-            },
-            {
-              "title": "深夜博客",
-              "url": "https://t.me/late_night_blog",
-              "countStr": "23",
-              "desc": "深夜阅读文章、个人随笔与精神角落",
-              "id": "late_night_blog"
-            },
-            {
-              "title": "什么值得看",
-              "url": "https://t.me/worth_read",
-              "countStr": "42",
-              "desc": "推荐值得一读的好文章与好书",
-              "id": "worth_read"
-            },
-            {
-              "title": "程序员日常",
-              "url": "https://t.me/dev_everyday",
-              "countStr": "22",
-              "desc": "程序员的日常工作、吐槽与经验分享",
-              "id": "dev_everyday"
-            },
-            {
-              "title": "小众软件",
-              "url": "https://t.me/niche_software",
-              "countStr": "53",
-              "desc": "发现与分享好用、新奇的小众软件",
-              "id": "niche_software"
-            },
-            {
-              "title": "酱酱の日报",
-              "url": "https://t.me/jiangdaily",
-              "countStr": "148",
-              "desc": "每天不只是新闻，更是酱酱的发现日常～ 精选有趣、有料、有灵魂的「热饭」",
-              "id": "jiangdaily"
-            },
-            {
-              "title": "财经速报",
-              "url": "https://t.me/econ_news_cn",
-              "countStr": "44",
-              "desc": "最新最快的财经新闻与市场动态资讯",
-              "id": "econ_news_cn"
-            },
-            {
-              "title": "AI 工具情报局",
-              "url": "https://t.me/AIGongJuQBJ",
-              "countStr": "2",
-              "desc": "每天更新 AI 工具、软件应用、开源项目和效率产品动态，帮你更快发现真正有用的工具。",
-              "id": "aigongjuqbj"
+              "title": "素材",
+              "url": "https://t.me/sucaiwanqing16888",
+              "countStr": "3",
+              "desc": "You can view and join @sucaiwanqing16888 right away.",
+              "id": "sucaiwanqing16888"
             }
           ]
         },
@@ -266,7 +203,7 @@
               "id": "times001"
             },
             {
-              "title": "华尔街见闻 - 财经时讯 AI 实时互动",
+              "title": "【华尔街见闻】- 财经时讯 | AI 实时互动",
               "url": "https://t.me/FinanceNewsDaily",
               "countStr": "48,462",
               "desc": "中国领先的金融信息平台，7×24 覆盖全球股市、外汇、债券、商品动态。 频道特色 • AI 自动解读：每条新闻实时生成投资参考 • 智能问答：使用 /ask 命令深入了解任意资讯 • 秒级推...",
@@ -350,7 +287,7 @@
               "id": "steamsteam"
             },
             {
-              "title": "云上报刊亭 精选 🅥 -- 新闻，报纸，杂志，电子书，资料 PDF",
+              "title": "☁️云上报刊亭📰 [精选] 🅥 -- 新闻，报纸，杂志，电子书，资料 PDF🗞",
               "url": "https://t.me/magazinesclubnew",
               "countStr": "16,191",
               "desc": "有时间就搬运一些 请于下载后24小时内删除,如果喜欢杂志,请购买正 ! Please delete within 24 hours. If you like the magazine, pl...",
@@ -406,7 +343,7 @@
               "id": "testflights"
             },
             {
-              "title": "云上报刊亭 精选 🅥 -- 新闻，报纸，杂志，电子书，资料 PDF",
+              "title": "☁️云上报刊亭📰 [精选] 🅥 -- 新闻，报纸，杂志，电子书，资料 PDF🗞",
               "url": "https://t.me/magazinesclub",
               "countStr": "8,977",
               "desc": "英文报刊杂志，电子书，报纸，外文杂志精选🅥 Newspaper, magazines and e-book collections 请于下载后24小时内删除，如果喜欢杂志，请购买正版！...",
@@ -476,7 +413,7 @@
               "id": "ru_rss"
             },
             {
-              "title": "Yuan的记事本 分享 软件 新闻 Yuan's Notepad",
+              "title": "🧨🏮Yuan的记事本 📚✍🏻 分享 软件 新闻 Yuan's Notepad",
               "url": "https://t.me/Yuan_En",
               "countStr": "6,379",
               "desc": "整理搬运一些奇奇怪怪有趣的事～ Organizing and carrying some strange and interesting things~ 会尽可能保留消息源出处(◔.̮◔) ...",
@@ -497,18 +434,11 @@
               "id": "rfi_rss"
             },
             {
-              "title": "Python潮流周刊",
+              "title": "Python潮流周刊🐍",
               "url": "https://t.me/pythontrendingweekly",
               "countStr": "4,508",
               "desc": "由豌豆花下猫主理，精心筛选国内外的 250+ 信息源，为你挑选最值得分享的文章、教程、开源项目、软件工具、播客和视频、热门话题等内容。愿景：帮助所有读者精进 Python 技术，...",
               "id": "pythontrendingweekly"
-            },
-            {
-              "title": "币圈日报",
-              "url": "https://t.me/bidaily",
-              "countStr": "4,372",
-              "desc": "币圈日报-每日最前沿的币圈新闻资讯",
-              "id": "bidaily"
             },
             {
               "title": "&'a ::rynco::UntitledChannel",
@@ -516,6 +446,13 @@
               "countStr": "4,372",
               "desc": "西郊林密无处去，北城雾沉晚风凉。 本频道是： - 推送任何有趣的东西的地方 - 偶尔可以看纸片小姐姐的地方 - 管理员随性吐槽的地方 本频道不是： - 客观的科技新闻频道 - 键政频道 转载...",
               "id": "rynif"
+            },
+            {
+              "title": "币圈日报",
+              "url": "https://t.me/bidaily",
+              "countStr": "4,372",
+              "desc": "币圈日报-每日最前沿的币圈新闻资讯",
+              "id": "bidaily"
             },
             {
               "title": "一起偷偷观察 DIYgod",
@@ -532,7 +469,7 @@
               "id": "btcnewsdaily"
             },
             {
-              "title": "7x24投资快讯",
+              "title": "⚡️ 7x24投资快讯",
               "url": "https://t.me/golden_wind_news",
               "countStr": "3,434",
               "desc": "24 小时投资相关的快讯",
@@ -581,7 +518,7 @@
               "id": "chinesenewss"
             },
             {
-              "title": "辣鸡咕鸽毁我信仰 #CurryMyLife",
+              "title": "💊 辣鸡咕鸽毁我信仰 #CurryMyLife",
               "url": "https://t.me/googleshit",
               "countStr": "1,216",
               "desc": "今天份的 Google 药丸。 话题包含但不限于最近由阿三统治的 Alphabet, Inc. 及其子公司/部门产品，以及相关新闻。 投稿: - - - 放送事故提醒: 已加入 频道消息汇总",
@@ -593,7 +530,7 @@
           "fullName": "💻 数码科技",
           "items": [
             {
-              "title": "科技圈在花频道",
+              "title": "科技圈🎗在花频道📮",
               "url": "https://t.me/TestFlightCN",
               "countStr": "204,739",
               "desc": "大家多多分享 •",
@@ -607,7 +544,7 @@
               "id": "youyousharechannel"
             },
             {
-              "title": "Duyao SpeedTest 科技生活 资讯转发",
+              "title": "Duyao｜SpeedTest｜科技生活｜资讯转发",
               "url": "https://t.me/DuyaoSS",
               "countStr": "70,885",
               "desc": "不定期发布或转发一些资讯 测速不代表推荐，经过长期测速，多次测速，可以慢慢筛选出一些更好的，以及淘汰掉一些总是不太好的… 由于大陆地区网络环境十分复杂，不同地区，...",
@@ -628,14 +565,14 @@
               "id": "ce_observe"
             },
             {
-              "title": "Yummy",
+              "title": "Yummy 😋",
               "url": "https://t.me/GodlyNews1",
               "countStr": "62,351",
               "desc": "本频道不定期推送科技数码类新资讯，欢迎关注！ 发布的内容不代表本频道立场，和你意见不一样的话欢迎在评论区留言表达，但请注意言辞，面斥不雅。 关联群组定期清理不活跃成员和僵尸号，误封请员。...",
               "id": "godlynews1"
             },
             {
-              "title": "快乐星球 妹子图 收集器",
+              "title": "快乐星球 | 妹子图 | 收集器",
               "url": "https://t.me/botmzt",
               "countStr": "56,295",
               "desc": "美女 #妹子 #精选 #全网 #中文 快乐星球 联系我们 开眼精选 所有资源出自互联网收集整理，本频道不参与制作，如果侵犯了您的合法权益，请联系我们删除",
@@ -677,7 +614,7 @@
               "id": "kejiqu"
             },
             {
-              "title": "𝗧𝗚𝗴𝗲𝗲𝗸 TG极客",
+              "title": "𝗧𝗚𝗴𝗲𝗲𝗸 ♾ TG极客",
               "url": "https://t.me/TGgeek",
               "countStr": "32,706",
               "desc": "This channel is no longer maintained. 2019.01.13 - 2022.11.12",
@@ -712,7 +649,7 @@
               "id": "misakatech"
             },
             {
-              "title": "晚来天欲雪 🅥 limbopro.com",
+              "title": "晚来天欲雪 🅥 🌈🌝🐳🏳️‍🌈 limbopro.com 🔗",
               "url": "https://t.me/limboprossr",
               "countStr": "18,463",
               "desc": "关注频道，涨姿势，不失联。 新人必看 联系毒奶 春潮频道 春潮群组 机场情报 去广告群 毒奶博客 毒奶搜索 谷歌搜索毒奶博主了解更多",
@@ -768,7 +705,7 @@
               "id": "mactalk"
             },
             {
-              "title": "今天abc看了啥",
+              "title": "今天abc看了啥🤔",
               "url": "https://t.me/abcthoughts",
               "countStr": "5,655",
               "desc": "现在我也不知道这频道发了啥了，各位慢慢吃瓜，将就着看 联系我请去 友链儿",
@@ -801,7 +738,7 @@
           "fullName": "👨‍💻 开发运维",
           "items": [
             {
-              "title": "Legado 开源阅读 频道",
+              "title": "Legado｜开源阅读｜频道",
               "url": "https://t.me/Legado_Channels",
               "countStr": "94,438",
               "desc": "频道内发布小说推文、阅读APK、书源、主题排版及部分阅读重要通知等。 - 频道导航： 入群须知： - 建于 2020/10/15",
@@ -857,7 +794,7 @@
               "id": "orzmini"
             },
             {
-              "title": "靠谱VPS推荐(默认带aff） - VPS仓/古博",
+              "title": "🥳靠谱VPS推荐(默认带aff） - VPS仓/古博",
               "url": "https://t.me/vpscang",
               "countStr": "11,474",
               "desc": "VPS推荐, VPS仓补货等信息. 默认所有信息都带aff == 网站: VPS推荐: www.gubo.org VPS大全: www.vpscang.com VPS信息(自行甄别): of...",
@@ -897,7 +834,7 @@
           "fullName": "🔒 信息安全",
           "items": [
             {
-              "title": "信息安全技术频道",
+              "title": "信息安全技术频道🔎",
               "url": "https://t.me/tg_InternetSecurity",
               "countStr": "11,898",
               "desc": "You can view and join right away.",
@@ -972,14 +909,14 @@
               "id": "xyxyspace"
             },
             {
-              "title": "Appinn Feed 小众软件",
+              "title": "Appinn Feed｜小众软件",
               "url": "https://t.me/appinnfeed",
               "countStr": "28,061",
               "desc": "这里有小众软件和发现频道的内容更新，以及一个绑定的私有群组。 吹水群： RSS 订阅地址： 发现频道 在这个频道发布广告（Buy ads on this channel）:",
               "id": "appinnfeed"
             },
             {
-              "title": "「 彼岸情报！」薅羊毛情报（网站/资源/软件/限免APP）见闻社",
+              "title": "🎏「 彼岸情报🔎！」🎏薅羊毛情报（网站/资源/软件/限免APP）见闻社",
               "url": "https://t.me/BaccanoSoul",
               "countStr": "23,702",
               "desc": "互联网优质羊毛资源共享集社！期待各位加入！ 广告/互推/合作联系: 全平台app限免/内测推送！限免游戏喜加一、资源网站分享，免费领，kn95口罩！...",
@@ -1021,14 +958,14 @@
               "id": "appssweepstakesnews"
             },
             {
-              "title": "简悦 - SimpRead",
+              "title": "简悦 - SimpRead 📢",
               "url": "https://t.me/simpread",
               "countStr": "6,055",
               "desc": "简悦的发布通道，简悦 - 让你瞬间进入沉浸式阅读的 Chrome 扩展，还原阅读的本质，提升你的阅读体验。地址 讨论群地址",
               "id": "simpread"
             },
             {
-              "title": "Fragment Monitor",
+              "title": "Fragment Monitor 👁‍🗨",
               "url": "https://t.me/Fragment_Monitor",
               "countStr": "5,639",
               "desc": "Fragment Monitor is a Fragment event notification channel that sends notifications to the Fragm...",
@@ -1068,21 +1005,21 @@
               "id": "sharealiyun"
             },
             {
-              "title": "Google Drive 资源 New @gdurl",
+              "title": "Google Drive 资源 | New @gdurl",
               "url": "https://t.me/gdsharing",
               "countStr": "127,316",
               "desc": "很高兴你来到新的 频道。这里有各种 Google Drive 资源，包括大电影，小电影，电子书，无损音乐等。...",
               "id": "gdsharing"
             },
             {
-              "title": "Widget软件工具资源分享",
+              "title": "Widget🏂软件工具资源分享",
               "url": "https://t.me/WidgetChannel",
               "countStr": "80,052",
               "desc": "每日推送有用有趣的内容，包括但不限于：软件 工具 网站 科技新闻。 合作/反馈 群组",
               "id": "widgetchannel"
             },
             {
-              "title": "飞鱼资源分享 冲浪指南 软件工具",
+              "title": "飞鱼资源分享|冲浪指南|软件工具",
               "url": "https://t.me/feiyu123",
               "countStr": "55,890",
               "desc": "分享一些工具，软件，浏览器插件脚本，网站,歌曲，互联网相关资讯，开源项目，碎碎念的想法 等等。 投稿互推合作机器人",
@@ -1096,7 +1033,7 @@
               "id": "privatetrackernews"
             },
             {
-              "title": "TGBot News",
+              "title": "🤖TGBot News",
               "url": "https://t.me/Hao12News",
               "countStr": "18,785",
               "desc": "● 记录 最新消息 会员专属版： ● 反馈群： ● 管理员： 抽奖频道 ： 帮助网站",
@@ -1129,7 +1066,7 @@
               "id": "dianying4k"
             },
             {
-              "title": "ASMR CHAOS 视转音 瞎逛 正经",
+              "title": "ASMR CHAOS 视转音|瞎逛|正经☄️",
               "url": "https://t.me/asmrforme",
               "countStr": "57,875",
               "desc": "广告合作请找 不要跑评论区刷屏引流影响交流哦",
@@ -1139,14 +1076,14 @@
               "title": "懒狗集中营-115/阿里/百度/迅雷/夸克 影视分享 阿里云盘百度网盘115网盘",
               "url": "https://t.me/vip115hot",
               "countStr": "43,363",
-              "desc": "建议 / 投稿 / 广告 / 合作",
+              "desc": "建议|投稿|广告|合作",
               "id": "vip115hot"
             },
             {
               "title": "Zapro Notice",
               "url": "https://t.me/zaproshare",
               "countStr": "31,423",
-              "desc": "软件  /  电影  /  纪录片 欢迎加入讨论群组",
+              "desc": "软件 | 电影 | 纪录片 欢迎加入讨论群组",
               "id": "zaproshare"
             },
             {
@@ -1206,7 +1143,7 @@
               "id": "yyets_subtitles"
             },
             {
-              "title": "Blu-ray Project 蓝光视频工程",
+              "title": "Blu-ray Project | 蓝光视频工程",
               "url": "https://t.me/beyondHD",
               "countStr": "5,644",
               "desc": "No HDTV,No WEB-DL,No TC,Love Bluray。共享带字幕或者国语的1080p及以上的视频，转载时注重压制以及diy的质量。所有资源不设置门槛",
@@ -1260,7 +1197,7 @@
               "id": "qing_03"
             },
             {
-              "title": "精选中文播客",
+              "title": "精选中文播客🎧",
               "url": "https://t.me/chinapodcast",
               "countStr": "14,719",
               "desc": "本频道实时推送热门播客节目，推送较频繁请mute。 点击订阅按钮（然后点Start按钮），可以让机器人单独推送该播客节目。 标题带播客来源链接。点击播客名字可以进行搜索。 节目相关讨论及问题请到",
@@ -1274,7 +1211,7 @@
               "id": "wenanguan_botjihuo"
             },
             {
-              "title": "维生素E 经济学哲学知识分享播客",
+              "title": "维生素E|经济学哲学知识分享播客",
               "url": "https://t.me/vitamineEpodcast",
               "countStr": "9,139",
               "desc": "精神分析漫步学派（The casualistic school of psychoanalysis） 生命需要维生素e！ 维生素e是一款完全免费的知识分享播客计划，我们分享构成这个世界，...",
@@ -1288,14 +1225,14 @@
               "id": "lumingguandj"
             },
             {
-              "title": "音乐收藏",
+              "title": "🎶音乐收藏",
               "url": "https://t.me/flac_file",
               "countStr": "7,629",
               "desc": "无损音乐收藏频道 音乐不定时更新",
               "id": "flac_file"
             },
             {
-              "title": "小破不入渠",
+              "title": "小破不入渠🌏",
               "url": "https://t.me/forwardlikehell",
               "countStr": "7,305",
               "desc": "無理の囈語。 原创天国: twitter.com/Jesoooor 垃圾堆: 欢迎访问「大破进击」博客: jesor.me 欢迎收听「交差点」播客: jiaocha.io A small p...",
@@ -1309,7 +1246,7 @@
               "id": "musiccnchannel"
             },
             {
-              "title": "咕 Billchen 咕 抹茶芭菲批发中心",
+              "title": "咕 Billchen 咕 🐱 抹茶芭菲批发中心",
               "url": "https://t.me/billchenla",
               "countStr": "2,912",
               "desc": "Gugugu Peing 歌单 Gugu channel:",
@@ -1323,7 +1260,7 @@
               "id": "musicshareplatform"
             },
             {
-              "title": "o1xhack 远上天台",
+              "title": "o1xhack ☁️ 远上天台",
               "url": "https://t.me/o1xinsight",
               "countStr": "2,079",
               "desc": "群组 ② MID TIME 半时光 个人频道私密暂时不对外开放 前亚麻 SDE 观点仅代表个人 iOS 开发者 思想 科技 生活 题材不限 都为精华 置顶： 主理人 博客 o1xhack.c...",
@@ -1344,7 +1281,7 @@
               "id": "popmusichistory"
             },
             {
-              "title": "老梁的音频 搬运",
+              "title": "老梁的音频[搬运]",
               "url": "https://t.me/Laoliang666",
               "countStr": "1,014",
               "desc": "搬运一些老梁的节目，希望大家听的开心。 Telegram中文设置: 搜群机器人: 公益TG代理:",
@@ -1356,7 +1293,7 @@
           "fullName": "🎐 动漫次元",
           "items": [
             {
-              "title": "ZBook, 电子书 小说 漫画资源 禁书分享",
+              "title": "🔥🔥ZBook,|电子书📚| 小说|漫画资源||禁书分享",
               "url": "https://t.me/ziyuanfeng59",
               "countStr": "101,066",
               "desc": "版权归原作者所有，如有侵权请告知删除 。若要转发频道资源请注明出处，谢谢大家 招商 解封 找书 任何想法和问题联系群",
@@ -1370,14 +1307,14 @@
               "id": "galgamer_channel"
             },
             {
-              "title": "SomeACG 每日少女壁纸",
+              "title": "SomeACG | 每日少女壁纸 🎆",
               "url": "https://t.me/SomeACG",
               "countStr": "33,033",
               "desc": "请问今天要来一张壁纸吗？这里是全TG质量最高的ACG壁纸频道！欢迎订阅！ 平时会发一些自己精心挑选的壁纸，大多数来自Pixiv，主要以PC壁纸为主，每天(佛系)更新，...",
               "id": "someacg"
             },
             {
-              "title": "Telegram数字图书馆",
+              "title": "📖Telegram数字图书馆",
               "url": "https://t.me/TG_book_data",
               "countStr": "31,733",
               "desc": "电子书/免费/资源/书库/漫画/资料/文献 ——————————————— 管理员联系方式",
@@ -1412,7 +1349,7 @@
               "id": "moeisland"
             },
             {
-              "title": "高画质动漫分享 Anime share 新年版",
+              "title": "高画质动漫分享 Anime share[新年版]",
               "url": "https://t.me/YXHMd",
               "countStr": "18,962",
               "desc": "You can view and join right away.",
@@ -1548,24 +1485,24 @@
               "url": "https://t.me/sharebooks4you/5698",
               "countStr": "124,910",
               "desc": "商务 搜书 导航",
-              "id": "sharebooks4you5698"
+              "id": "sharebooks4you"
             },
             {
-              "title": "好读 ReadFine电子书屋",
+              "title": "[好读] ReadFine电子书屋",
               "url": "https://t.me/Readfine",
               "countStr": "72,026",
-              "desc": "好读提供电子书一站式体验，包括评分 / 简介 / 封面，一键下载，享受读趣。在这里，因为有您的陪伴，阅读变得并不孤单。频道只负责搜索资源并不对内容负责。...",
+              "desc": "好读提供电子书一站式体验，包括评分|简介|封面，一键下载，享受读趣。在这里，因为有您的陪伴，阅读变得并不孤单。频道只负责搜索资源并不对内容负责。...",
               "id": "readfine"
             },
             {
-              "title": "Magazine 期刊杂志 考公 中文 网课分享",
+              "title": "Magazine｜期刊杂志｜考公｜中文 | 网课分享",
               "url": "https://t.me/Qikan2023",
               "countStr": "54,373",
               "desc": ":",
               "id": "qikan2023"
             },
             {
-              "title": "书屋 电子书 𝑻𝑮𝒆𝑩𝒐𝒐𝒌",
+              "title": "书屋 电子书 📚 𝑻𝑮𝒆𝑩𝒐𝒐𝒌",
               "url": "https://t.me/TGeBook",
               "countStr": "49,356",
               "desc": "电子书 杂志 小说 期刊 读物 不定时更新",
@@ -1579,35 +1516,35 @@
               "id": "douban_read"
             },
             {
-              "title": "小声读书",
+              "title": "小声读书 🙈",
               "url": "https://t.me/weekly_books",
               "countStr": "38,868",
               "desc": "探索数字阅读可能性，致力于打破信息茧房，挖掘价值信息。混搭不拘一格，偶尔荒腔走板",
               "id": "weekly_books"
             },
             {
-              "title": "PDF图书联盟 链接收藏 电子书",
+              "title": "PDF图书联盟|链接收藏|电子书🏷",
               "url": "https://t.me/PDFtushuguan",
               "countStr": "27,839",
               "desc": "无规律无方向的持续分享一些书目，以及资源和有趣的内容，请各位秉承友好、善意的心态进行交流。 ——",
               "id": "pdftushuguan"
             },
             {
-              "title": "hayami's blog 日常人间观察",
+              "title": "hayami's blog｜日常人间观察",
               "url": "https://t.me/hayami_kiraa",
               "countStr": "17,480",
               "desc": "一个满足日常好奇心的私人博客。关心科技/人文/艺术/城市公共空间/女性和性别议题/劳工权益/个体叙事/新闻媒体/电影/纪录片/音乐/书/星星 个人网站： 公众号: Hayami Instag...",
               "id": "hayami_kiraa"
             },
             {
-              "title": "Find Blog发现博客",
+              "title": "Find Blog👁发现博客",
               "url": "https://t.me/FindBlog",
               "countStr": "14,990",
               "desc": "发现优秀的博客与创作者 发现博客，文章筛选，和博客有关的一切 一个收录优秀博客的地方 #Blog #Life #Code #Tech #Write #Design #Theme 赞助/广告/...",
               "id": "findblog"
             },
             {
-              "title": "Find Blog发现博客",
+              "title": "Find Blog👁发现博客",
               "url": "https://t.me/findblog",
               "countStr": "14,988",
               "desc": "发现优秀的博客与创作者 发现博客，文章筛选，和博客有关的一切 一个收录优秀博客的地方 #Blog #Life #Code #Tech #Write #Design #Theme 赞助/广告/...",
@@ -1649,7 +1586,7 @@
               "id": "xiaozhangdubao"
             },
             {
-              "title": "Android Weekly Update",
+              "title": "Android Weekly Update ⚡️",
               "url": "https://t.me/update4weekly",
               "countStr": "5,625",
               "desc": "一份 Android 行业动态分析专栏计划 / 周报。 个人 Channel。 反馈邮箱：safari1.ink Twitter: twitter.com/update4weekly Mas...",
@@ -1663,7 +1600,7 @@
               "id": "writing_discuss"
             },
             {
-              "title": "有声故事",
+              "title": "有声故事 🔊",
               "url": "https://t.me/youshenggushi",
               "countStr": "4,785",
               "desc": "有声故事 包括但不限于午夜电台，小说，故事，评书，相声 资源来源于网络 没有任何广告，纯净的有声故事。 欢迎订阅",
@@ -1677,7 +1614,7 @@
               "id": "gujinpintan1"
             },
             {
-              "title": "豆瓣知乎简书微信公众号",
+              "title": "豆瓣知乎简书微信公众号💐",
               "url": "https://t.me/dbzhjs",
               "countStr": "2,388",
               "desc": "阅读，爱上书。 豆瓣 知乎 简书 左岸读书 腾讯大家 百度知道 我的小书屋 壹心理 十点读书 界面 三联生活周刊 南都周刊 连岳 韩寒一个 腾讯今日话题 新世相、其他微信公众号 … 友链",
@@ -1698,7 +1635,7 @@
               "id": "world2us"
             },
             {
-              "title": "無次元 博客",
+              "title": "《無次元》博客",
               "url": "https://t.me/wuciyuan",
               "countStr": "1,000",
               "desc": "Lawrence Li 主理",
@@ -1724,7 +1661,7 @@
               "id": "qiushuiyibing"
             },
             {
-              "title": "南国微雪 一切，都很美丽。",
+              "title": "南国微雪 | 一切，都很美丽。",
               "url": "https://t.me/TinySnow4Yi",
               "countStr": "2,916",
               "desc": "The idiot's channel. Updating depends on mood. Fresh man READ PIN please. Only write articles i...",
@@ -1764,7 +1701,7 @@
               "id": "weibo_one"
             },
             {
-              "title": "Laoself",
+              "title": "Laoself 🐎",
               "url": "https://t.me/laoself",
               "countStr": "2,862",
               "desc": "自己的想法，不代表任何其他個人或組織，轉傳訊息不表示贊成。 亦包含本人 #Twitter 和 #Bluesky 上的推文和按讚。...",
@@ -1790,21 +1727,21 @@
           "fullName": "👗 生活消费",
           "items": [
             {
-              "title": "佳佳 头像文案吧",
+              "title": "🧸【佳佳】头像文案吧🧸",
               "url": "https://t.me/WenAnBa",
               "countStr": "52,785",
               "desc": "心心念念是旧人 笔笔写下是旧情 #头像 #姓氏头像 #壁纸 #素材 #文案 ！每日更新，你的关注，是我最大的动力！ ： （顾佳佳） 多一个字少一个字都是骗子哦～",
               "id": "wenanba"
             },
             {
-              "title": "朱颜别镜 妹子图 美女图",
+              "title": "朱颜别镜 | 妹子图 | 美女图",
               "url": "https://t.me/meizitu3",
               "countStr": "48,465",
               "desc": "全网美女,妹子图收藏 最是人间留不住,朱颜辞镜花辞树 美女 妹子 写真 汉服 美图 高清 少女 合作推广联系 频道不出，别被骗子骗",
               "id": "meizitu3"
             },
             {
-              "title": "壁纸 Wallpaper",
+              "title": "壁纸 | Wallpaper",
               "url": "https://t.me/bizhi123",
               "countStr": "25,639",
               "desc": "喜欢请多多分享，谢谢",
@@ -1825,7 +1762,7 @@
               "id": "foolishtracewind"
             },
             {
-              "title": "羊王频道 神价捡漏群",
+              "title": "羊王🐑频道｜神价捡漏群",
               "url": "https://t.me/yangwangpindao",
               "countStr": "8,618",
               "desc": "共享ID 独享ID 兑换码chatgpt 虚拟id 广告联系",
@@ -1853,7 +1790,7 @@
               "id": "cnphotog_collect"
             },
             {
-              "title": "ANIME Wallpaper",
+              "title": "🖼ANIME Wallpaper",
               "url": "https://t.me/acgwallpaper",
               "countStr": "5,803",
               "desc": "壁纸 Wallpaper 每天更新一次 Update daily 其他频道 Other channels： 反馈 Feedback： 请直接评论 Comment directly",
@@ -1914,7 +1851,7 @@
               "id": "woshadiao"
             },
             {
-              "title": "树洞群友问有点意思",
+              "title": "树洞🌳群友问❓有点意思🗳",
               "url": "https://t.me/ShortcutsCN",
               "countStr": "95,279",
               "desc": "洞友频道投稿： （选择群友问投稿） 禁止非法内容，一经发现拉黑投稿！ 频道内容搜索 侵权/解封/帮助 发现各种喜闻乐见，只要是问题，洞友都可以在这里问。群友问期待洞友的加入",
@@ -2025,7 +1962,7 @@
               "title": "85.60×53.98卡粉订阅/提醒",
               "url": "https://t.me/DocOfCard",
               "countStr": "46,472",
-              "desc": "群  /  频道",
+              "desc": "群 | 频道",
               "id": "docofcard"
             },
             {
@@ -2071,7 +2008,7 @@
               "id": "newsfw"
             },
             {
-              "title": "Office Tool Plus",
+              "title": "Office Tool Plus 📰",
               "url": "https://t.me/otp_channel",
               "countStr": "7,189",
               "desc": "Office Tool Plus 的。 Official channel of Office Tool Plus. 频道默认使用静默模式发布消息，只有紧急事情才会发布通知。...",
@@ -2158,7 +2095,7 @@
               "id": "sousuoda"
             },
             {
-              "title": "火箭写书",
+              "title": "🚀 火箭写书",
               "url": "https://t.me/woicesu",
               "countStr": "5,578",
               "desc": "二手机场交易 欢迎各位关注 ！ 送测请私聊 这里是一个服务型的综合跨境服务提供商测试平台，为各大服务提供商提供包括国内大带宽家庭宽带测试，流媒体解锁情况测试，...",
@@ -2240,7 +2177,7 @@
               "id": "three001"
             },
             {
-              "title": "科技圈の 在花茶馆",
+              "title": "科技圈🎗の 在花茶馆",
               "url": "https://t.me/zaihuachat",
               "countStr": "50,309",
               "desc": "•",
@@ -2261,7 +2198,7 @@
               "id": "blacktechsharing"
             },
             {
-              "title": "RouterGroup 软路由 硬路由 外贸电视",
+              "title": "RouterGroup|软路由|硬路由|外贸电视",
               "url": "https://t.me/ruanlu",
               "countStr": "22,243",
               "desc": "频道： 置顶",
@@ -2324,7 +2261,7 @@
               "id": "zh_gv"
             },
             {
-              "title": "易学 论道 科学 变化",
+              "title": "易学 论道 | 科学 变化",
               "url": "https://t.me/Yiology",
               "countStr": "6,115",
               "desc": "朝闻道 夕死可矣 有事没事 翻翻咱祖宗留下来各种经书各种乱七八糟的老东西 从国学啊黄老之道啊到坑蒙拐骗(划掉) 当然也欢迎有其他思想和各国乱七八糟神秘学爱好者 以前加的相关群 一个个都是常常...",
@@ -2387,10 +2324,10 @@
               "id": "iosdevotee"
             },
             {
-              "title": "OpenWRT LEDE/Wireless Routers",
+              "title": "OpenWRT*LEDE/Wireless Routers",
               "url": "https://t.me/OpenWRT_Routers",
               "countStr": "3,306",
-              "desc": "这是关于路由器和无线设备的讨论组…的重生版 请务必明确越高端的硬件可玩性越好的传统 / ω・´) 。也不许发广告po。违者一次警告二次kick",
+              "desc": "这是关于路由器和无线设备的讨论组…的重生版 请务必明确越高端的硬件可玩性越好的传统|ω・´) 。也不许发广告po。违者一次警告二次kick",
               "id": "openwrt_routers"
             },
             {
@@ -2422,14 +2359,14 @@
               "id": "ml_cn"
             },
             {
-              "title": "AI 富豪俱乐部",
+              "title": "🔥AI 富豪俱乐部🔥",
               "url": "https://t.me/cloudnativer",
               "countStr": "2,505",
               "desc": "本群为 AI 富豪聚集地，主要用来讨论与技术相关的话题，也可以交流网络、安全相关的内容",
               "id": "cloudnativer"
             },
             {
-              "title": "智能手机讨论组",
+              "title": "智能手机讨论组📱",
               "url": "https://t.me/M_Phone",
               "countStr": "2,380",
               "desc": "智能手机讨论组，主要讨论各种手机，禁止买卖手机。加群有加减法问题验证，防止广告机器人，请正确回答才能加入。如第一次忘记回答了，可退群再加，回答问题即可",
@@ -2492,7 +2429,7 @@
               "id": "mkplayerapp"
             },
             {
-              "title": "deepseekgemini＆grok ai&chatgpt ai&meta ai＆claude ai＆Midjourney人工智能 phone talk",
+              "title": "deepseek❤️gemini＆grok ai&chatgpt ai&meta ai＆claude ai＆Midjourney人工智能 phone talk",
               "url": "https://t.me/pixelcn",
               "countStr": "1,048",
               "desc": "手机科技讨论google pixel.iPhone 行為通則（試行）",
@@ -2534,14 +2471,14 @@
               "id": "forcecoder"
             },
             {
-              "title": "第二现场 ",
+              "title": "第二现场  🎉",
               "url": "https://t.me/dearlive",
               "countStr": "615",
               "desc": "各大科技发布会、直播现场吹水群",
               "id": "dearlive"
             },
             {
-              "title": "利器",
+              "title": "利器 👨🏻‍💻👩‍💻 🧤",
               "url": "https://t.me/fun_makers",
               "countStr": "566",
               "desc": "利器社群在 TG 上的分支。 欢迎分享 iOS / macOS / android / Windows 平台的优秀软件和解决方案",
@@ -2626,7 +2563,7 @@
               "title": "#v2fly",
               "url": "https://t.me/v2fly_chat",
               "countStr": "7,352",
-              "desc": "公告频道： 须知 / README： 滥权申诉请发信至 chat_abuse.org （进群验证答错请勿spam本信箱） off-topic群(水群)",
+              "desc": "公告频道： 须知|README： 滥权申诉请发信至 chat_abuse.org （进群验证答错请勿spam本信箱） off-topic群(水群)",
               "id": "v2fly_chat"
             },
             {
@@ -2672,14 +2609,14 @@
               "id": "vpsxinhaoqi"
             },
             {
-              "title": "闲蛋面板交流群",
+              "title": "闲蛋面板🥚交流群",
               "url": "https://t.me/xdzzmb",
               "countStr": "4,085",
               "desc": "官方授权网站： demo传送门: 默认用户名/密码 (admin/admin) 文档传送门:",
               "id": "xdzzmb"
             },
             {
-              "title": "古博 - 靠谱VPS交流群（禁止名字打广告）",
+              "title": "🤣古博 - 靠谱VPS交流群（禁止名字打广告）",
               "url": "https://t.me/guboorg",
               "countStr": "3,563",
               "desc": "VPS测速，评测，推荐 VPS补货推荐通知: www.gubo.org www.vpscang.com 友情推荐:",
@@ -2700,7 +2637,7 @@
               "id": "sstaprule"
             },
             {
-              "title": "CN Android Dev",
+              "title": "[CN] Android Dev",
               "url": "https://t.me/AndroidDevCn",
               "countStr": "2,699",
               "desc": "仅限 Android 开发话题。请勿闲聊，闲聊请进入下述群。 隔壁群 Android discuss : 开发闲聊群: 频道: Flutter 相关:",
@@ -2714,7 +2651,7 @@
               "id": "bigdatazh"
             },
             {
-              "title": "CN Flutter Dev",
+              "title": "[CN]Flutter Dev",
               "url": "https://t.me/FlutterCN",
               "countStr": "1,818",
               "desc": "Flutter 中文开发 官方群(EN):",
@@ -2784,14 +2721,14 @@
               "id": "fedorazh"
             },
             {
-              "title": "Scala User Group zh",
+              "title": "Scala User Group [zh]",
               "url": "https://t.me/scala_zh",
               "countStr": "706",
               "desc": "scala 中文群组 与 消息互转 ------------------------------------- ！ 任何私聊与本群无关！...",
               "id": "scala_zh"
             },
             {
-              "title": "SFW/SFMC Magisk 吹水 (unofficial)",
+              "title": "[SFW/SFMC] Magisk 吹水 (unofficial)",
               "url": "https://t.me/magiskCNshare",
               "countStr": "663",
               "desc": "老鸽频道： 大咕群组： 请不要在本群内发起与Magisk毫无关系的话题～",
@@ -2805,7 +2742,7 @@
               "id": "leetcode_discuss"
             },
             {
-              "title": "Archive Plash Speed Xtreme",
+              "title": "[Archive] Plash Speed Xtreme",
               "url": "https://t.me/ps4cn2",
               "countStr": "457",
               "desc": "TG游戏玩家开黑PY群 本群已开启自动驾驶，。 NS群",
@@ -2838,7 +2775,7 @@
           "fullName": "🔒 信息安全",
           "items": [
             {
-              "title": "AdGuard 中文",
+              "title": "AdGuard 【中文】",
               "url": "https://t.me/AdGuard_chinese",
               "countStr": "5,570",
               "desc": "adguard.com 官方网站链接。AdGuard信息反馈意见。中文！ 报告错误： agrd.io/report AdGuard微博： 加入AdGuard官方群！...",
@@ -2871,7 +2808,7 @@
               "id": "gboxtg"
             },
             {
-              "title": "Appinn Talk 小众软件",
+              "title": "Appinn Talk 💧 小众软件",
               "url": "https://t.me/appinn",
               "countStr": "9,011",
               "desc": "小众软件 appinn.com 本群链接： 新消息频道： 本群采用自动 bot 进行验证和广告拦截，未触发验证可尝试重新申请，如遇误杀请员： 公开群，禁开漏点车； ； 不欢迎纯广告用户名；...",
@@ -2967,14 +2904,14 @@
               "id": "google_drive"
             },
             {
-              "title": "阿里云盘交流群",
+              "title": "🎬 阿里云盘交流群 💾",
               "url": "https://t.me/yppshare",
               "countStr": "13,732",
               "desc": "本群默认支持阿里云盘相关规定",
               "id": "yppshare"
             },
             {
-              "title": "MugglePay 麻瓜宝crypto only",
+              "title": "MugglePay 麻瓜宝💰crypto only",
               "url": "https://t.me/mugglepay",
               "countStr": "2,727",
               "desc": "MugglePay EN: MuggleWallet: MugglePay 商家系统: 认准管理员避免受骗： 签约及产品： 技术： MugglePay 商家后台 2.0 产品反馈收集",
@@ -3000,7 +2937,7 @@
           "fullName": "🎬 影视剧集",
           "items": [
             {
-              "title": "合租社群 Netflix YouTube Spotify office365 Hbo Surge 美剧 等音乐影视聊天机场电影盒子软路由",
+              "title": "[合租社群]Netflix|YouTube|Spotify |office365|Hbo|Surge|美剧|等音乐影视聊天机场电影盒子软路由",
               "url": "https://t.me/hezu1",
               "countStr": "75,045",
               "desc": "合租指南: 敬请关注通知频道 规如下： 本群属于合租，。 建议先Google之后再提问，对于频道置顶中已解答的问题不会重复回复。 本群为，不参与任何的商业活动，...",
@@ -3024,7 +2961,7 @@
               "title": "Zapro · 2026",
               "url": "https://t.me/zaprobest",
               "countStr": "9,031",
-              "desc": "影视  /  软件  /  福利 频道: 主站:",
+              "desc": "影视 | 软件 | 福利 频道: 主站:",
               "id": "zaprobest"
             },
             {
@@ -3042,7 +2979,7 @@
               "id": "meijukingdom"
             },
             {
-              "title": "频道资源福利分享 Chat",
+              "title": "频道🏆资源福利分享 Chat",
               "url": "https://t.me/freemorebestchat",
               "countStr": "5,279",
               "desc": "『资源福利分享』每天更新各类影视剧集网盘资源、福利活动、实用软件等。 频道所有内容均来源于网络，内容仅用于网友兴趣交流所用，所有图文版权均归原作者及其网站所有，特此声明。 频道",
@@ -3059,7 +2996,7 @@
               "title": "谷歌、微软云盘讨论群",
               "url": "https://t.me/google_win",
               "countStr": "3,360",
-              "desc": "自助购物 前缀修改 ★本群 黄 暴 广告 涉及政治话题 4K视频资源 少数派非官方群 hsx.me 影视资源站 Netflix  /  hulu账号交流： 苹果用户",
+              "desc": "自助购物 前缀修改 ★本群 黄 暴 广告 涉及政治话题 4K视频资源 少数派非官方群 hsx.me 影视资源站 Netflix | hulu账号交流： 苹果用户",
               "id": "google_win"
             },
             {
@@ -3131,14 +3068,14 @@
               "id": "yuncun"
             },
             {
-              "title": "音乐相声小说搜一下",
+              "title": "音乐相声小说💯搜一下",
               "url": "https://t.me/dianbotai",
               "countStr": "4,630",
               "desc": "想听啥，群里发送关键词试一试，不仅限于音乐",
               "id": "dianbotai"
             },
             {
-              "title": "内核恐慌 听众群",
+              "title": "《内核恐慌》听众群",
               "url": "https://t.me/pan_icu",
               "countStr": "1,646",
               "desc": "一档号称硬核却没什么干货的信息技术主题娱乐节目的听众群 节目网站",
@@ -3173,7 +3110,7 @@
               "id": "museelogue"
             },
             {
-              "title": "点歌台 音乐 听歌 music",
+              "title": "🎶点歌台 音乐 听歌 music",
               "url": "https://t.me/tingge8",
               "countStr": "922",
               "desc": "群规： 点故事等非音乐内容，违者禁言7天。点政治色情内容的直接踢出本群。如果对非音乐内容感兴趣可以私聊机器人点，请不要影响他人，谢谢！ 电报最牛听歌机器人チノ喵 点歌请私聊机器人。...",
@@ -3213,7 +3150,7 @@
           "fullName": "🎐 动漫次元",
           "items": [
             {
-              "title": "亿万同人唯一指定官方群",
+              "title": "亿万同人唯一指定官方群🍻",
               "url": "https://t.me/ywtrzm",
               "countStr": "4,975",
               "desc": "官网 官方推送频道 官方IG主页 字幕组大量招德语翻译、英语翻译、压制、西班牙语、时间轴、印地语、法语、葡萄牙语、英语、日语翻译等，有意加q群153293889",
@@ -3241,7 +3178,7 @@
               "id": "coolcomic404_fans"
             },
             {
-              "title": "亨嘉之会 二次元美图仓库 🅥",
+              "title": "亨嘉之会 | 二次元美图仓库 🅥",
               "url": "https://t.me/hengjiazhihui",
               "countStr": "1,193",
               "desc": "二次元/动漫/插画作品互动讨论，闲聊吹水群 进群需要进行人机验证，验证失败会被移出群组。 群规： 关联频道： 友情链接： 私聊群主",
@@ -3316,7 +3253,7 @@
               "id": "danjikongbu"
             },
             {
-              "title": "MUG_ZH 泛用型音游中文讨论群组 说不定内含萌狼",
+              "title": "MUG_ZH|泛用型音游中文讨论群组|说不定内含萌狼",
               "url": "https://t.me/mug_zh",
               "countStr": "800",
               "desc": "什么音游都可以讨论的地方！移动端/街机/主机/掌机/PC/甚至VR都可以！（当然要讲中文） *如果你的加群申请被拒，并且你确信你不是spam，请私聊群主 友情链接： *头像上次变化于2018/3/18",
@@ -3377,7 +3314,7 @@
               "id": "wangvpn_user_chat"
             },
             {
-              "title": "科学上网技术研究会",
+              "title": "科学上网技术研究会👨‍💻",
               "url": "https://t.me/kxswjs",
               "countStr": "17,301",
               "desc": "文明和谐，诚信友善，自由平等，公正守纪。 ========注意事项======== 。 禁发布色情、暴力及血腥内容。 不得发布清真信息及垃圾广告。 不得辱骂他人及实施人身攻击。...",
@@ -3391,7 +3328,7 @@
               "id": "bandwagonhostgroup"
             },
             {
-              "title": "ShadowsocksR - 技术 讨论 提问 少水",
+              "title": "ShadowsocksR - 技术|讨论|提问|少水",
               "url": "https://t.me/chatssr",
               "countStr": "7,697",
               "desc": "SSR讨论群 管理媛はい萌妹纸 禁政治广告18+ 其它内容随管理意 ShadowsocksR Windows客户端下载",
@@ -3412,7 +3349,7 @@
               "id": "netch_discuss_group"
             },
             {
-              "title": "离港 ̲̅V̲̅I̲̅P̅ 候机室 机场交流🅥",
+              "title": "离港[̲̅V̲̅I̲̅P̅]候机室|机场交流🅥",
               "url": "https://t.me/airport_chat",
               "countStr": "3,866",
               "desc": "机场交流|机场那些事|机圈吃瓜 群规: 平等而友好地交流，营造良好聊天氛围！ 主要讨论机场相关事宜，当然也欢迎讨论其他不违反群规的内容! 禁止键政！禁止键政！禁止键政！ ！ 离港机场收录频道",
@@ -3426,7 +3363,7 @@
               "id": "bisproject"
             },
             {
-              "title": "Swarm免费梯子翻墙",
+              "title": "Swarm免费梯子🆓翻墙",
               "url": "https://t.me/hxisj8whsv",
               "countStr": "348",
               "desc": "最新免费安卓梯子下载链接: 最新免费iOS+Windows梯子下载链接:",
@@ -3459,7 +3396,7 @@
               "id": "twittercryptofans"
             },
             {
-              "title": "合租小车",
+              "title": "合租小车🚗",
               "url": "https://t.me/TogetherHub",
               "countStr": "969",
               "desc": "You can view and join right away.",
@@ -3492,14 +3429,14 @@
               "id": "wikipedia_zh_n"
             },
             {
-              "title": "小声读书",
+              "title": "小声读书 ☘️",
               "url": "https://t.me/what_youread",
               "countStr": "13,330",
               "desc": "Just AI and Read",
               "id": "what_youread"
             },
             {
-              "title": "杂志 考研 考公 互助群",
+              "title": "杂志｜考研｜考公｜互助群",
               "url": "https://t.me/Waikan2023",
               "countStr": "6,842",
               "desc": "各国期刊，各种考试、兴趣期刊！ 频道Channel",
@@ -3513,7 +3450,7 @@
               "id": "dushufenxiang_chat"
             },
             {
-              "title": "zread 读书会",
+              "title": "zread 读书会 📚",
               "url": "https://t.me/zread",
               "countStr": "4,993",
               "desc": "欢迎书友们 或许你正在寻觅， 那一隅祥和。 或许你正在等待， 那心之静谧。 畅游书海，以书会友。 内容建议以具体书为基， 分享自己有深度的感想等， 避免发起与读书无关的话题。...",
@@ -3534,14 +3471,14 @@
               "id": "douban_discuss"
             },
             {
-              "title": "好读 ReadFine交流总群",
+              "title": "[好读] ReadFine交流总群",
               "url": "https://t.me/ReadfineChat",
               "countStr": "4,464",
               "desc": "频 道 好读提供电子书一站式阅读体验，一键下载，享受读趣。在这里因为有您的陪伴，阅读变得并不孤单",
               "id": "readfinechat"
             },
             {
-              "title": "中英语言学习 Learning Chinese & English",
+              "title": "中英语言学习 | Learning Chinese & English",
               "url": "https://t.me/LinguisticAcademy",
               "countStr": "3,332",
               "desc": "1. 本群旨在汉语和英语的学习 2. 你可以聊任何话题，但请不要让人感到不适 3. 请带着爱帮助别人，或者带着感恩求助于别人 1. The purport is to learn Chine...",
@@ -3576,7 +3513,7 @@
               "id": "hardcoreng"
             },
             {
-              "title": "Technical Blog 技術博客",
+              "title": "Technical Blog | 技術博客",
               "url": "https://t.me/Technical_Blog",
               "countStr": "1,104",
               "desc": "You can view and join right away.",
@@ -3607,10 +3544,10 @@
           "fullName": "🏀 体育运动",
           "items": [
             {
-              "title": "体育爱好者 足球 篮球 NBA CBA 交流",
+              "title": "体育爱好者|足球|篮球|NBA|CBA|交流",
               "url": "https://t.me/tiyu365",
               "countStr": "4,063",
-              "desc": "体育爱好者 / 足球 / 篮球 / NBA / CBA / 交流 群内全面",
+              "desc": "体育爱好者|足球|篮球|NBA|CBA|交流 群内全面",
               "id": "tiyu365"
             }
           ]
@@ -3619,7 +3556,7 @@
           "fullName": "👗 生活消费",
           "items": [
             {
-              "title": "好棒 羊毛超级搜",
+              "title": "好棒 🌈 羊毛超级搜",
               "url": "https://t.me/dajiajia",
               "countStr": "12,077",
               "desc": "捡漏线报QQ微信群 羊王频道 羊毛超级搜群组 福利超级搜网站 tb.applebl.com 小火箭共享ID 独享ID 兑换码 wohaobang.cn 频道主 好棒的羊王 羊毛超级自助搜",
@@ -3640,7 +3577,7 @@
               "id": "firstamazon"
             },
             {
-              "title": "羊毛党--TG支部 (薅死羊不偿命系列)",
+              "title": "羊毛党--TG支部 (薅死羊不偿命系列)🐑🐑🐑",
               "url": "https://t.me/cn_coupon",
               "countStr": "5,194",
               "desc": "薅死羊不偿命系列",
@@ -3654,7 +3591,7 @@
               "id": "flgirl"
             },
             {
-              "title": "松下尼康 摄影",
+              "title": "[松下🔒尼康] 摄影",
               "url": "https://t.me/cnphotog",
               "countStr": "2,011",
               "desc": "这里是 的摄影群 欢迎对各种摄影作品、技法，题材和器材的讨论！ 本群禁止除群主硬点以外的广告 讨论时请尽可能就事论事，禁止挑衅和人身攻击 欢迎关注群主的频道： （《摄影新手指南》 筹备中）",
@@ -3668,7 +3605,7 @@
               "id": "jidian"
             },
             {
-              "title": "android Discuss 辣鸡谷歌还我甜点",
+              "title": "android Discuss | 辣鸡谷歌还我甜点 🌶🐓🌾🕊",
               "url": "https://t.me/AndroidDiscuss",
               "countStr": "1,528",
               "desc": "日常闲聊水 和其他任意讨论瞎扯 少喷政治多发情 消歧义 少>别大量洗版刷屏地 喷>无脑骂负面内容 少喷>可以适量合理友善交谈认真讨论 **友善地",
@@ -3682,7 +3619,7 @@
               "id": "hanhans2"
             },
             {
-              "title": "羊毛活动",
+              "title": "⏰羊毛活动",
               "url": "https://t.me/Groups_cn",
               "countStr": "717",
               "desc": "网站：www.fanli.me",
@@ -3722,7 +3659,7 @@
               "id": "jinan_tg"
             },
             {
-              "title": "大学联盟 𝗨𝗻𝗶𝘃𝗲𝗿𝘀𝗶𝘁𝘆𝗔𝗹𝗹𝗶𝗮𝗻𝗰𝗲",
+              "title": "大学联盟 🎓 𝗨𝗻𝗶𝘃𝗲𝗿𝘀𝗶𝘁𝘆𝗔𝗹𝗹𝗶𝗮𝗻𝗰𝗲",
               "url": "https://t.me/UniversityAlliance",
               "countStr": "14,210",
               "desc": "大学联盟 将关闭公开群组，新的私密群组已成立。 加入方式请查看： Created on 2019.04.16",
@@ -3757,14 +3694,14 @@
               "id": "zhoukou"
             },
             {
-              "title": "湖南大学 HunanUniversity",
+              "title": "湖南大学 | HunanUniversity",
               "url": "https://t.me/HunanUniversity",
               "countStr": "697",
               "desc": "本群受广告骚扰影响，暂时关闭，请加入 交流，谢谢",
               "id": "hunanuniversity"
             },
             {
-              "title": "愚民小鎮 保衛香港！ @werewolfbot (入群請先看規定)",
+              "title": "愚民小鎮 🥳 保衛香港！ @werewolfbot (入群請先看規定)",
               "url": "https://t.me/twWolf",
               "countStr": "437",
               "desc": "小鎮村 重要說明請看頻道 群組規定 愚民小鎮群務申訴區",
@@ -3790,7 +3727,7 @@
               "id": "lilydeyaa"
             },
             {
-              "title": "小小布吉岛闲聊群",
+              "title": "小小布吉岛闲聊群～",
               "url": "https://t.me/bujidaochat",
               "countStr": "6,975",
               "desc": "问题咨询 账户查询",
@@ -3879,7 +3816,7 @@
               "id": "cnpub"
             },
             {
-              "title": "Telegram 中文社群",
+              "title": "Telegram 中文社群 🇨🇳",
               "url": "https://t.me/haijiaosheque",
               "countStr": "3,041",
               "desc": "回复关键词搜索各种资源Telegram 中文/汉化/知识/教程, 科技, 机场, 科学上网...... 自由是有规则的，没规则的自由是混乱。 禁言是机器人干的，退群重新加入即可",
@@ -3905,10 +3842,10 @@
           "fullName": "🌐 综合其他",
           "items": [
             {
-              "title": "Official Geph Users 迷霧通官方用戶群",
+              "title": "Official Geph Users | 迷霧通官方用戶群",
               "url": "https://t.me/gephusers",
               "countStr": "45,052",
-              "desc": "Announcements  /  通知頻道 Group rules  /  群規 違規處理條例 客服机器人",
+              "desc": "Announcements | 通知頻道 Group rules | 群規 違規處理條例 客服机器人",
               "id": "gephusers"
             },
             {
@@ -3919,14 +3856,14 @@
               "id": "mio_house"
             },
             {
-              "title": "KinhDown 加速永无止境",
+              "title": "KinhDown 加速⚡️永无止境⚡️",
               "url": "https://t.me/KinhDownChat",
               "countStr": "20,182",
               "desc": "PikPak云盘: KinhDown: 频道: 讨论群:",
               "id": "kinhdownchat"
             },
             {
-              "title": "iBeta 尝鲜派 官方群",
+              "title": "iBeta 尝鲜派 | 官方群",
               "url": "https://t.me/ibetame",
               "countStr": "18,173",
               "desc": "iBeta 尝鲜派（iBeta.me）的官方群组。欢迎大家关注",
@@ -3940,14 +3877,14 @@
               "id": "viatg"
             },
             {
-              "title": "ZH/EN HyperCeiler Chat",
+              "title": "[ZH/EN] HyperCeiler | Chat",
               "url": "https://t.me/cemiuiler",
               "countStr": "12,361",
               "desc": "进群务必先看本群置顶！ - 建议使用 简体中文/繁體中文/English； - 请勿随意私聊管理（必要反馈除外）； - ； - ； - 在本群发布管理认为不适合的消息，...",
               "id": "cemiuiler"
             },
             {
-              "title": "阿里巴巴影业集团 粉丝群",
+              "title": "阿里巴巴影业集团™ 粉丝群",
               "url": "https://t.me/alyd_g",
               "countStr": "11,443",
               "desc": "Exchange some thoughts about Alibaba Pictures.",
@@ -3982,7 +3919,7 @@
               "id": "orz_mini"
             },
             {
-              "title": "期货与期权 Derivatives",
+              "title": "期货与期权📈📉📊 Derivatives",
               "url": "https://t.me/CNderivatives",
               "countStr": "6,431",
               "desc": "期货、期权和各类金融交易品的投机与套利 股票期貨期權權證ETF 股票期货期权权证ETF",
@@ -4101,7 +4038,7 @@
               "id": "brahmanjg"
             },
             {
-              "title": "业余无线电爱好者HAM 中继查询",
+              "title": "业余无线电爱好者HAM|中继查询",
               "url": "https://t.me/ham002",
               "countStr": "1,196",
               "desc": "本群为HAM业余无线电内容讨论为主，禁辱骂行为。 如果自动入群测试出现故障，请主动联系以下管理员手动批准入群。 本群链接 请员 备用入群 备用入群 备用入群",
