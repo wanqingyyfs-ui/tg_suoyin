@@ -1,0 +1,32 @@
+---
+export interface AdItem {
+  id?: number;
+  position?: string;
+  title: string;
+  description?: string;
+  url: string;
+  imageUrl?: string;
+  sortOrder?: number;
+}
+
+export interface Props {
+  ad?: AdItem | null;
+  label?: string;
+  compact?: boolean;
+}
+
+const { ad, label = '广告', compact = false } = Astro.props as Props;
+---
+
+{ad && ad.url && (
+  <aside class:list={['ad-block', compact && 'ad-block-compact']} aria-label={label}>
+    <a href={ad.url} target="_blank" rel="sponsored noopener noreferrer" class="ad-link">
+      {ad.imageUrl && <img src={ad.imageUrl} loading="lazy" alt={ad.title} class="ad-image" />}
+      <div class="ad-content">
+        <span class="ad-label">{label}</span>
+        <strong class="ad-title">{ad.title}</strong>
+        {ad.description && <span class="ad-desc">{ad.description}</span>}
+      </div>
+    </a>
+  </aside>
+)}

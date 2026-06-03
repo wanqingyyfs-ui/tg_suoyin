@@ -36,9 +36,25 @@ export interface TypeGroup {
   }>;
 }
 
+export interface AdItem {
+  id?: number;
+  position: string;
+  title: string;
+  description?: string;
+  url: string;
+  imageUrl?: string;
+  sortOrder?: number;
+}
+
+export interface AdsData {
+  items: AdItem[];
+  positions: Record<string, AdItem[]>;
+}
+
 export interface SiteData {
   categories: CategoryMeta[];
   types: TypeGroup[];
+  ads?: AdsData;
 }
 
 export interface CategoryGroup {
@@ -54,7 +70,13 @@ export interface DirectoryData {
   featuredItems: DirectoryItem[];
   totalItems: number;
   typeStats: Array<{ name: string; count: number }>;
+  ads: AdsData;
 }
+
+const EMPTY_ADS: AdsData = {
+  items: [],
+  positions: {},
+};
 
 export function loadSiteData(): SiteData {
   const dataPath = path.resolve(process.cwd(), 'public/data.json');
@@ -86,8 +108,16 @@ function getFeaturedItems(items: DirectoryItem[], size = 18): DirectoryItem[] {
     .slice(0, size);
 }
 
+function normalizeAds(ads?: AdsData): AdsData {
+  return {
+    items: Array.isArray(ads?.items) ? ads.items : [],
+    positions: ads?.positions && typeof ads.positions === 'object' ? ads.positions : {},
+  };
+}
+
 export function buildDirectoryData(data = loadSiteData()): DirectoryData {
   const categoryGroups = new Map<string, CategoryGroup>();
+  const ads = normalizeAds(data.ads);
 
   data.categories.forEach((category) => {
     categoryGroups.set(category.id, { meta: category, items: [] });
@@ -138,6 +168,7 @@ export function buildDirectoryData(data = loadSiteData()): DirectoryData {
     featuredItems: getFeaturedItems(allItems),
     totalItems: allItems.length,
     typeStats,
+    ads,
   };
 }
 

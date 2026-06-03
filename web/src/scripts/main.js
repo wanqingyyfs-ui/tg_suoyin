@@ -32,13 +32,18 @@ function safeSetStorage(key, value) {
 
 function readDirectoryData() {
     const payload = document.getElementById('directory-data');
-    if (!payload?.textContent) return { sections: [], allItems: [] };
+    if (!payload?.textContent) return { sections: [], allItems: [], ads: { items: [], positions: {} } };
 
     try {
-        return JSON.parse(payload.textContent);
+        const data = JSON.parse(payload.textContent);
+        return {
+            sections: Array.isArray(data.sections) ? data.sections : [],
+            allItems: Array.isArray(data.allItems) ? data.allItems : [],
+            ads: data.ads || { items: [], positions: {} },
+        };
     } catch (error) {
         console.error('[rectg] failed to parse directory data:', error);
-        return { sections: [], allItems: [] };
+        return { sections: [], allItems: [], ads: { items: [], positions: {} } };
     }
 }
 
@@ -60,6 +65,8 @@ const activeGrid = document.getElementById('active-grid');
 const directoryData = readDirectoryData();
 const sections = Array.isArray(directoryData.sections) ? directoryData.sections : [];
 const allItems = Array.isArray(directoryData.allItems) ? directoryData.allItems : [];
+const adsByPosition = directoryData.ads?.positions || {};
+const searchInlineAds = adsByPosition.search_inline || [];
 let currentSectionId = activeSection?.dataset.currentId || 'featured';
 let toastTimeout;
 
@@ -224,11 +231,52 @@ function createCard(item, matches = {}) {
     return article;
 }
 
-function renderCards(items, matchMap = new Map()) {
+function createAdCard(ad) {
+    const article = document.createElement('article');
+    article.className = 'card ad-result-card';
+
+    const label = document.createElement('div');
+    label.className = 'ad-label';
+    label.textContent = '广告';
+
+    const title = document.createElement('a');
+    title.href = ad.url || '#';
+    title.target = '_blank';
+    title.rel = 'sponsored noopener noreferrer';
+    title.className = 'card-title';
+    title.textContent = ad.title || '推荐';
+
+    const desc = document.createElement('div');
+    desc.className = 'card-desc';
+    desc.textContent = ad.description || '推广内容';
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+
+    const link = document.createElement('a');
+    link.className = 'card-action card-action-primary';
+    link.href = ad.url || '#';
+    link.target = '_blank';
+    link.rel = 'sponsored noopener noreferrer';
+    link.textContent = '查看';
+
+    actions.append(link);
+    article.append(label, title, desc, actions);
+    return article;
+}
+
+function renderCards(items, matchMap = new Map(), options = {}) {
     if (!activeGrid) return;
     const fragment = document.createDocumentFragment();
-    items.forEach((item) => {
+    const inlineAds = options.withAds ? searchInlineAds : [];
+    const interval = 8;
+
+    items.forEach((item, index) => {
         fragment.appendChild(createCard(item, matchMap.get(item.id) || {}));
+        if (inlineAds.length > 0 && (index + 1) % interval === 0 && index + 1 < items.length) {
+            const ad = inlineAds[Math.floor(index / interval) % inlineAds.length];
+            fragment.appendChild(createAdCard(ad));
+        }
     });
     activeGrid.replaceChildren(fragment);
 }
@@ -315,7 +363,7 @@ function renderSearch(rawQuery, options = {}) {
 
     setActiveNav('');
     setSectionHeader('搜索结果', results.length, `“${rawQuery.trim()}” · ${results.length} 个资源`);
-    renderCards(results, matchMap);
+    renderCards(results, matchMap, { withAds: true });
     if (emptyState) emptyState.style.display = results.length ? 'none' : 'block';
     if (activeSection) activeSection.style.display = results.length ? '' : 'none';
     if (options.updateUrl) updateUrl({ query: rawQuery.trim(), replace: true });

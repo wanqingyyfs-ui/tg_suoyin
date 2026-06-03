@@ -1,9 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Card from '../components/Card.astro';
+import AdBlock from '../components/AdBlock.astro';
 import { buildDirectoryData } from '../utils/data';
 
-const { categories, validSections, allItems, featuredItems, totalItems, typeStats } = buildDirectoryData();
+const { categories, validSections, allItems, featuredItems, totalItems, typeStats, ads } = buildDirectoryData();
 const initialSection = {
   id: 'featured',
   icon: '★',
@@ -11,6 +12,8 @@ const initialSection = {
   fullName: '精选推荐',
   items: featuredItems,
 };
+const homeTopAds = ads.positions.home_top || [];
+const homeBelowHeroAds = ads.positions.home_below_hero || [];
 const directoryPayload = JSON.stringify({
   sections: [
     initialSection,
@@ -24,6 +27,7 @@ const directoryPayload = JSON.stringify({
     })),
   ],
   allItems,
+  ads,
 }).replace(/</g, '\\u003c');
 
 const pageDescription = `收录 ${totalItems} 个 Telegram 中文频道与群组，支持分类浏览、关键词搜索、详情页和直达链接。`;
@@ -67,7 +71,7 @@ const pageDescription = `收录 ${totalItems} 个 Telegram 中文频道与群组
         ))}
       </nav>
       <div class="sidebar-footer">
-        <a href="https://github.com/jackvale/rectg/issues/new" target="_blank" rel="noopener" class="submit-btn" title="提交新的频道或群组">
+        <a href="https://github.com/wanqingyyfs-ui/rectg/issues/new" target="_blank" rel="noopener" class="submit-btn" title="提交新的频道或群组">
           提交收录
         </a>
       </div>
@@ -92,7 +96,7 @@ const pageDescription = `收录 ${totalItems} 个 Telegram 中文频道与群组
         </div>
 
         <div class="header-right">
-          <a class="topbar-link" href="https://github.com/jackvale/rectg" target="_blank" rel="noopener">GitHub</a>
+          <a class="topbar-link" href="https://github.com/wanqingyyfs-ui/rectg" target="_blank" rel="noopener">GitHub</a>
           <button id="theme-toggle" aria-label="切换主题">
             <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -148,12 +152,24 @@ const pageDescription = `收录 ${totalItems} 个 Telegram 中文频道与群组
         </div>
       </section>
 
+      {homeTopAds.length > 0 && (
+        <div class="ad-strip">
+          {homeTopAds.slice(0, 2).map(ad => <AdBlock ad={ad} />)}
+        </div>
+      )}
+
       <div class="bulletin" id="bulletin">
         <span class="bulletin-icon">i</span>
         <div class="bulletin-text-container">
-          <span id="bulletin-text">本站数据基于 GitHub README 自动构建部署，已收录 {totalItems} 个资源。</span>
+          <span id="bulletin-text">本站数据来自 SQLite 维护源，当前已收录 {totalItems} 个公开 Telegram 资源。</span>
         </div>
       </div>
+
+      {homeBelowHeroAds.length > 0 && (
+        <div class="ad-strip ad-strip-secondary">
+          {homeBelowHeroAds.slice(0, 2).map(ad => <AdBlock ad={ad} compact />)}
+        </div>
+      )}
 
       <div id="content-container">
         <section class="category-section" id="active-section" data-current-id={initialSection.id}>
