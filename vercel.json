@@ -1,6 +1,7 @@
 {
     "version": 2,
-    "buildCommand": "cd web && npm install && npm run build",
+    "installCommand": "cd web && npm ci",
+    "buildCommand": "cd web && npm run build",
     "outputDirectory": "web/dist",
     "framework": "astro"
-}
+  }
