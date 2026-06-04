@@ -21,9 +21,11 @@ from search_entries import DB_PATH, TYPE_CHOICES, search_entries
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT_DIR / ".env"
-DEFAULT_LIMIT = 5
+DEFAULT_LIMIT = 15
 MAX_MESSAGE_LENGTH = 3900
 BOT_AD_POSITION = "bot_search_inline"
+TITLE_MAX_CHARS = 20
+AD_TITLE_MAX_CHARS = 30
 
 QUERY_CACHE: dict[str, dict[str, Any]] = {}
 
@@ -56,6 +58,21 @@ def escape(value: Any) -> str:
     return html.escape(str(value or ""), quote=True)
 
 
+def truncate_text(value: str, max_chars: int) -> str:
+    value = " ".join((value or "").split())
+    if len(value) <= max_chars:
+        return value
+    return value[:max_chars].rstrip() + "..."
+
+
+def safe_error_text(error: Exception) -> str:
+    text = str(error)
+    marker = "/bot"
+    if marker in text:
+        text = text.split(marker, 1)[0] + "/bot<hidden>"
+    return text
+
+
 class TelegramApiError(RuntimeError):
     pass
 
@@ -69,11 +86,20 @@ class TelegramClient:
 
     def request(self, method: str, payload: dict[str, Any] | None = None) -> Any:
         url = f"{self.base_url}/{method}"
-        response = self.session.post(url, json=payload or {}, timeout=self.timeout)
-        response.raise_for_status()
-        data = response.json()
-        if not data.get("ok"):
-            raise TelegramApiError(data.get("description") or f"Telegram API error: {method}")
+        try:
+            response = self.session.post(url, json=payload or {}, timeout=self.timeout)
+        except requests.RequestException as exc:
+            raise TelegramApiError(f"Telegram request failed: {method}: {safe_error_text(exc)}") from exc
+
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise TelegramApiError(f"Telegram response is not JSON: {method}: HTTP {response.status_code}") from exc
+
+        if not response.ok or not data.get("ok"):
+            description = data.get("description") or f"HTTP {response.status_code}"
+            raise TelegramApiError(f"Telegram API error in {method}: {description}")
+
         return data.get("result")
 
     def get_updates(self, offset: int | None, timeout: int) -> list[dict[str, Any]]:
@@ -121,7 +147,13 @@ class TelegramClient:
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
-        self.request("editMessageText", payload)
+        try:
+            self.request("editMessageText", payload)
+        except TelegramApiError as exc:
+            message = str(exc)
+            if "message is not modified" in message.lower():
+                return
+            raise
 
     def answer_callback_query(self, callback_query_id: str, text: str = "") -> None:
         payload: dict[str, Any] = {"callback_query_id": callback_query_id}
@@ -137,6 +169,7 @@ class SearchRequest:
     category: str | None = None
     page: int = 1
     limit: int = DEFAULT_LIMIT
+    sort: str = "relevance"
 
 
 def load_bot_ads(position: str = BOT_AD_POSITION) -> list[dict[str, Any]]:
@@ -148,12 +181,11 @@ def load_bot_ads(position: str = BOT_AD_POSITION) -> list[dict[str, Any]]:
     try:
         rows = conn.execute(
             """
-            SELECT title, description, url, image_url, sort_order
+            SELECT id, title, description, url, image_url, sort_order, position
             FROM ads
-            WHERE enabled = 1 AND position = ?
+            WHERE enabled = 1 AND COALESCE(url, '') != ''
             ORDER BY sort_order ASC, id ASC
-            """,
-            (position,),
+            """
         ).fetchall()
     except sqlite3.OperationalError:
         return []
@@ -162,10 +194,13 @@ def load_bot_ads(position: str = BOT_AD_POSITION) -> list[dict[str, Any]]:
 
     return [
         {
+            "id": row["id"],
             "title": row["title"] or "广告",
             "description": row["description"] or "",
             "url": row["url"] or "",
             "imageUrl": row["image_url"] or "",
+            "position": row["position"] or BOT_AD_POSITION,
+            "sortOrder": row["sort_order"] or 0,
         }
         for row in rows
         if row["url"]
@@ -179,6 +214,7 @@ def make_query_token(request: SearchRequest) -> str:
             "type": request.entry_type,
             "category": request.category,
             "limit": request.limit,
+            "sort": request.sort,
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -189,6 +225,7 @@ def make_query_token(request: SearchRequest) -> str:
         "entry_type": request.entry_type,
         "category": request.category,
         "limit": request.limit,
+        "sort": request.sort,
     }
     return token
 
@@ -208,6 +245,7 @@ def parse_search_text(text: str) -> SearchRequest:
 
     entry_type = None
     category = None
+    sort = "relevance"
     keyword_parts: list[str] = []
     idx = 0
 
@@ -223,6 +261,12 @@ def parse_search_text(text: str) -> SearchRequest:
             category = parts[idx + 1].strip()
             idx += 2
             continue
+        if part == "--sort" and idx + 1 < len(parts):
+            candidate = parts[idx + 1].strip().lower()
+            if candidate in ("relevance", "latest"):
+                sort = candidate
+            idx += 2
+            continue
         keyword_parts.append(part)
         idx += 1
 
@@ -230,82 +274,145 @@ def parse_search_text(text: str) -> SearchRequest:
         keyword=" ".join(keyword_parts).strip(),
         entry_type=entry_type,
         category=category,
+        sort=sort,
     )
 
 
-def format_item(index: int, item: dict[str, Any]) -> str:
-    desc = " ".join((item.get("desc") or "").split())
-    if len(desc) > 80:
-        desc = desc[:80].rstrip() + "..."
-
-    lines = [
-        f"<b>{index}. {escape(item.get('title'))}</b>",
-        f"{escape(item.get('type') or '-')} · {escape(item.get('category') or '-')} · 👥 {escape(item.get('countStr') or '-')}",
-    ]
-    if desc:
-        lines.append(escape(desc))
-    lines.append(f"<a href=\"{escape(item.get('url'))}\">打开 Telegram</a>")
-    return "\n".join(lines)
-
-
-def format_ad(ad: dict[str, Any]) -> str:
-    lines = [f"<b>广告 · {escape(ad.get('title'))}</b>"]
-    if ad.get("description"):
-        desc = " ".join(str(ad.get("description") or "").split())
-        if len(desc) > 80:
-            desc = desc[:80].rstrip() + "..."
-        lines.append(escape(desc))
-    lines.append(f"<a href=\"{escape(ad.get('url'))}\">查看</a>")
-    return "\n".join(lines)
-
-
-def build_result_message(request: SearchRequest) -> tuple[str, dict[str, Any] | None]:
-    result = search_entries(
+def search_for_request(request: SearchRequest) -> dict[str, Any]:
+    return search_entries(
         keyword=request.keyword,
         entry_type=request.entry_type,
         category=request.category,
         limit=request.limit,
         page=request.page,
+        sort=request.sort,
     )
 
-    query_title = request.keyword or "全部"
-    header = [
-        f"🔎 <b>{escape(query_title)}</b>",
-        f"共 {result['total']} 条结果 · 第 {result['page']} 页",
+
+def type_icon(entry_type: str) -> str:
+    if entry_type == "channel":
+        return "📢"
+    if entry_type == "group":
+        return "👥"
+    return "🤖"
+
+
+def format_item(item: dict[str, Any]) -> str:
+    title = truncate_text(item.get("title") or item.get("username") or "未命名", TITLE_MAX_CHARS)
+    url = item.get("url") or ""
+    icon = type_icon(item.get("type") or "")
+    count = item.get("countStr") or "-"
+    return f'{icon} <a href="{escape(url)}">{escape(title)}</a>  {escape(count)}'
+
+
+def format_ads() -> list[str]:
+    medals = ["🥇", "🥈", "🥉"]
+    lines: list[str] = []
+    for idx, ad in enumerate(load_bot_ads(), start=1):
+        medal = medals[idx - 1] if idx <= len(medals) else "🎖"
+        title = truncate_text(ad.get("title") or "广告", AD_TITLE_MAX_CHARS)
+        lines.append(f'{medal} <a href="{escape(ad.get("url"))}">{escape(title)}</a>')
+    return lines
+
+
+def prepend_ads(lines: list[str]) -> list[str]:
+    ads = format_ads()
+    if not ads:
+        return lines
+    return [*ads, "", *lines]
+
+
+def build_keyboard(request: SearchRequest, result: dict[str, Any]) -> dict[str, Any]:
+    group_request = SearchRequest(
+        keyword=request.keyword,
+        entry_type="group",
+        category=request.category,
+        limit=request.limit,
+        sort="relevance",
+    )
+    channel_request = SearchRequest(
+        keyword=request.keyword,
+        entry_type="channel",
+        category=request.category,
+        limit=request.limit,
+        sort="relevance",
+    )
+    latest_request = SearchRequest(
+        keyword=request.keyword,
+        entry_type=None,
+        category=request.category,
+        limit=request.limit,
+        sort="latest",
+    )
+
+    first_row = [
+        {"text": "👥 群组", "callback_data": f"s:{make_query_token(group_request)}:1"},
+        {"text": "📢 频道", "callback_data": f"s:{make_query_token(channel_request)}:1"},
     ]
 
+    second_row: list[dict[str, str]] = [
+        {"text": "🆕 最新", "callback_data": f"s:{make_query_token(latest_request)}:1"},
+    ]
+
+    if request.page > 1:
+        prev_request = SearchRequest(
+            keyword=request.keyword,
+            entry_type=request.entry_type,
+            category=request.category,
+            limit=request.limit,
+            sort=request.sort,
+        )
+        second_row.append({"text": "⬅️ 上一页", "callback_data": f"s:{make_query_token(prev_request)}:{request.page - 1}"})
+
+    if result["hasMore"]:
+        next_request = SearchRequest(
+            keyword=request.keyword,
+            entry_type=request.entry_type,
+            category=request.category,
+            limit=request.limit,
+            sort=request.sort,
+        )
+        second_row.append({"text": "下一页 ➡️", "callback_data": f"s:{make_query_token(next_request)}:{request.page + 1}"})
+
+    return {"inline_keyboard": [first_row, second_row]}
+
+
+def build_result_message(request: SearchRequest) -> tuple[str, dict[str, Any] | None]:
+    result = search_for_request(request)
+    query_title = request.keyword or "全部"
+
+    header = [f"🔎 <b>{escape(query_title)}</b>"]
     filters = []
-    if request.entry_type:
-        filters.append(f"type={request.entry_type}")
+    if request.entry_type == "group":
+        filters.append("群组")
+    elif request.entry_type == "channel":
+        filters.append("频道")
+    elif request.entry_type == "bot":
+        filters.append("机器人")
+    if request.sort == "latest":
+        filters.append("最新")
     if request.category:
-        filters.append(f"category={request.category}")
+        filters.append(request.category)
+
     if filters:
-        header.append("筛选：" + escape("，".join(filters)))
+        header.append("筛选：" + escape(" / ".join(filters)))
+    header.append(f"共 {result['total']} 条结果")
+
+    body: list[str] = []
+    body.extend(prepend_ads(header))
+    body.append("")
 
     items = result["items"]
     if not items:
-        return "\n".join(header + ["", "没有找到匹配结果。换个关键词试试。"]), None
+        body.append("没有找到匹配结果。换个关键词试试。")
+    else:
+        for item in items:
+            body.append(format_item(item))
 
-    start_index = (request.page - 1) * request.limit
-    ads = load_bot_ads()
-    ad = ads[(request.page - 1) % len(ads)] if ads else None
+    body.append("")
+    body.append(f"👇点击按钮，筛选资源类型【第{result['page']}页】")
 
-    body: list[str] = []
-    for idx, item in enumerate(items, start=1):
-        body.append(format_item(start_index + idx, item))
-        if ad and idx == min(3, len(items)):
-            body.append(format_ad(ad))
-
-    token = make_query_token(request)
-    buttons: list[dict[str, str]] = []
-    if request.page > 1:
-        buttons.append({"text": "上一页", "callback_data": f"s:{token}:{request.page - 1}"})
-    if result["hasMore"]:
-        buttons.append({"text": "下一页", "callback_data": f"s:{token}:{request.page + 1}"})
-
-    reply_markup = {"inline_keyboard": [buttons]} if buttons else None
-    footer = ["", "用法：关键词 --type channel --category \"💻 数码科技\""]
-    return "\n\n".join(["\n".join(header), *body, "\n".join(footer)]), reply_markup
+    return "\n".join(body), build_keyboard(request, result)
 
 
 def handle_message(client: TelegramClient, message: dict[str, Any]) -> None:
@@ -322,12 +429,12 @@ def handle_message(client: TelegramClient, message: dict[str, Any]) -> None:
             "你好，我是 rectg 搜索 Bot。\n\n"
             "直接发送关键词即可搜索 Telegram 中文频道/群组。\n\n"
             "示例：\n"
-            "科技\n"
-            "AI --type channel\n"
-            "影视 --category \"🎬 影视剧集\"\n\n"
-            "支持参数：--type channel/group/bot，--category 分类名。"
+            "金边美食\n"
+            "AI科技\n"
+            "东南亚柬埔寨新闻\n\n"
+            "按钮说明：群组/频道按类型筛选，最新按添加时间排序且不区分类型。"
         )
-        client.send_message(chat_id, help_text, reply_to_message_id=message_id)
+        client.send_message(chat_id, "\n".join(prepend_ads([help_text])), reply_to_message_id=message_id)
         return
 
     request = parse_search_text(text)
@@ -357,7 +464,7 @@ def handle_callback_query(client: TelegramClient, callback_query: dict[str, Any]
 
     cached = QUERY_CACHE.get(token)
     if not cached:
-        client.send_message(chat_id, "分页状态已失效，请重新发送关键词搜索。")
+        client.send_message(chat_id, "\n".join(prepend_ads(["分页状态已失效，请重新发送关键词搜索。"])))
         return
 
     request = SearchRequest(
@@ -365,6 +472,7 @@ def handle_callback_query(client: TelegramClient, callback_query: dict[str, Any]
         entry_type=cached.get("entry_type"),
         category=cached.get("category"),
         limit=cached.get("limit") or DEFAULT_LIMIT,
+        sort=cached.get("sort") or "relevance",
         page=page,
     )
     reply_text, reply_markup = build_result_message(request)
@@ -387,7 +495,7 @@ def run_polling(client: TelegramClient, polling_timeout: int) -> None:
             print("\n已停止 Bot")
             return
         except Exception as exc:
-            print(f"❌ Bot loop error: {exc}", file=sys.stderr)
+            print(f"❌ Bot loop error: {safe_error_text(exc)}", file=sys.stderr)
             time.sleep(3)
 
 
@@ -400,7 +508,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.token:
-        raise SystemExit("❌ 缺少 TELEGRAM_BOT_TOKEN。请复制 .env.example 为 .env 后填写 Token。")
+        raise SystemExit("❌ 缺少 TELEGRAM_BOT_TOKEN。请在 .env 或环境变量中填写 Token。")
 
     client = TelegramClient(args.token, timeout=args.timeout)
     me = client.request("getMe")
