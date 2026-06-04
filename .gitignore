@@ -157,3 +157,9 @@ coverage/
 .wrangler/
 .cloudflare/
 firebase-debug.log
+
+# =========================
+# Local run scripts
+# =========================
+run_bot.ps1
+run_admin.ps1
