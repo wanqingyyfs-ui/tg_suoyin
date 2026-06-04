@@ -178,8 +178,6 @@
 <url><loc>https://www.rectg.com/p/quanxnews</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/booksthatmakeyouthink</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/surgenews</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://www.rectg.com/p/theblockbeats</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://www.rectg.com/p/biquan321</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/sharebooks4you</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/readfine</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/qikan2023</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
@@ -261,6 +259,8 @@
 <url><loc>https://www.rectg.com/p/justfnew</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/meowminimeow</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/sitandrelaxlabs</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://www.rectg.com/p/theblockbeats</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://www.rectg.com/p/biquan321</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/sousuoda</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/woicesu</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/zxc1017yyfx</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
@@ -437,11 +437,6 @@
 <url><loc>https://www.rectg.com/p/airport_chat</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/bisproject</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/hxisj8whsv</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://www.rectg.com/p/binancechinese</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://www.rectg.com/p/onblockchain</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://www.rectg.com/p/twittercryptofans</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://www.rectg.com/p/togetherhub</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://www.rectg.com/p/ctggroup</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/sharing_books4u</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/wikipedia_zh_n</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/what_youread</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
@@ -546,4 +541,9 @@
 <url><loc>https://www.rectg.com/p/lcpapp</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/sitandrelaxgroup</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://www.rectg.com/p/yiqile</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://www.rectg.com/p/binancechinese</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://www.rectg.com/p/onblockchain</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://www.rectg.com/p/twittercryptofans</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://www.rectg.com/p/togetherhub</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://www.rectg.com/p/ctggroup</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 </urlset>

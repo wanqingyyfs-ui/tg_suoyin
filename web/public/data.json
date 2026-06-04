@@ -85,13 +85,6 @@
       "id": "科学上网"
     },
     {
-      "icon": "🪙",
-      "name": "加密货币",
-      "fullName": "🪙 加密货币",
-      "keywords": "区块链资讯 Web3 新闻 市场动态",
-      "id": "加密货币"
-    },
-    {
       "icon": "📚",
       "name": "学习阅读",
       "fullName": "📚 学习阅读",
@@ -153,6 +146,13 @@
       "fullName": "🌐 综合其他",
       "keywords": "",
       "id": "综合其他"
+    },
+    {
+      "icon": "💎",
+      "name": "加密货币",
+      "fullName": "💎 加密货币",
+      "keywords": "区块链资讯 Web3 新闻 市场动态",
+      "id": "加密货币"
     }
   ],
   "types": [
@@ -1459,25 +1459,6 @@
           ]
         },
         {
-          "fullName": "🪙 加密货币",
-          "items": [
-            {
-              "title": "BlockBeats",
-              "url": "https://t.me/theblockbeats",
-              "countStr": "37,729",
-              "desc": "BlockBeats-专业的区块链研究机构与资讯平台",
-              "id": "theblockbeats"
-            },
-            {
-              "title": "币圈动态",
-              "url": "https://t.me/biquan321",
-              "countStr": "23,484",
-              "desc": "持有任何加密币的我们都是刁民！ 热点分享如有侵权留言秒删",
-              "id": "biquan321"
-            }
-          ]
-        },
-        {
           "fullName": "📚 学习阅读",
           "items": [
             {
@@ -2076,6 +2057,25 @@
               "countStr": "1,171",
               "desc": "从此处: 开始可查看坐和放宽的所有频道/群组",
               "id": "sitandrelaxlabs"
+            }
+          ]
+        },
+        {
+          "fullName": "💎 加密货币",
+          "items": [
+            {
+              "title": "BlockBeats",
+              "url": "https://t.me/theblockbeats",
+              "countStr": "37,729",
+              "desc": "BlockBeats-专业的区块链研究机构与资讯平台",
+              "id": "theblockbeats"
+            },
+            {
+              "title": "币圈动态",
+              "url": "https://t.me/biquan321",
+              "countStr": "23,484",
+              "desc": "持有任何加密币的我们都是刁民！ 热点分享如有侵权留言秒删",
+              "id": "biquan321"
             }
           ]
         }
@@ -3372,46 +3372,6 @@
           ]
         },
         {
-          "fullName": "🪙 加密货币",
-          "items": [
-            {
-              "title": "币安官方中文群",
-              "url": "https://t.me/BinanceChinese",
-              "countStr": "227,707",
-              "desc": "币安官方中文TG群 谨防假冒！ 私聊您的都是骗子 所有涉及黄、黑、赌、灰、政治的话题都将被踢出 群内禁止发布不实谣言及其他交易所截图 请大家共同维护社区秩序，营造友好的讨论环境，谢谢！...",
-              "id": "binancechinese"
-            },
-            {
-              "title": "加密货币与区块链讨论群",
-              "url": "https://t.me/onBlockchain",
-              "countStr": "3,665",
-              "desc": "加密货币与区块链频道",
-              "id": "onblockchain"
-            },
-            {
-              "title": "加密货币爱好者",
-              "url": "https://t.me/twittercryptofans",
-              "countStr": "1,578",
-              "desc": "加入条件：价值投资，长线，不加杠杆不做合约，所在地合规平台交易，只投输得起的钱。新入群请翻看群聊。基础问题去问谷歌。推荐项目请先说出依据。发广告立斩。不要相信群友私信。勿用语音。...",
-              "id": "twittercryptofans"
-            },
-            {
-              "title": "合租小车🚗",
-              "url": "https://t.me/TogetherHub",
-              "countStr": "969",
-              "desc": "You can view and join right away.",
-              "id": "togetherhub"
-            },
-            {
-              "title": "CTG 中文社区",
-              "url": "https://t.me/CTGgroup",
-              "countStr": "429",
-              "desc": "新一代以区块链技术为基础的公链应用平台。CTG将区块链技术带入到日常的真实应用当中。CTG同时满足了企业和用户的高TPS需求。 注：进CTG官方微信群请加客服号：ctgcoinonblockchain",
-              "id": "ctggroup"
-            }
-          ]
-        },
-        {
           "fullName": "📚 学习阅读",
           "items": [
             {
@@ -4176,6 +4136,46 @@
               "countStr": "216",
               "desc": "我希望群里的人，常能感到开心快乐，品行、生活品质都越来越高",
               "id": "yiqile"
+            }
+          ]
+        },
+        {
+          "fullName": "💎 加密货币",
+          "items": [
+            {
+              "title": "币安官方中文群",
+              "url": "https://t.me/BinanceChinese",
+              "countStr": "227,707",
+              "desc": "币安官方中文TG群 谨防假冒！ 私聊您的都是骗子 所有涉及黄、黑、赌、灰、政治的话题都将被踢出 群内禁止发布不实谣言及其他交易所截图 请大家共同维护社区秩序，营造友好的讨论环境，谢谢！...",
+              "id": "binancechinese"
+            },
+            {
+              "title": "加密货币与区块链讨论群",
+              "url": "https://t.me/onBlockchain",
+              "countStr": "3,665",
+              "desc": "加密货币与区块链频道",
+              "id": "onblockchain"
+            },
+            {
+              "title": "加密货币爱好者",
+              "url": "https://t.me/twittercryptofans",
+              "countStr": "1,578",
+              "desc": "加入条件：价值投资，长线，不加杠杆不做合约，所在地合规平台交易，只投输得起的钱。新入群请翻看群聊。基础问题去问谷歌。推荐项目请先说出依据。发广告立斩。不要相信群友私信。勿用语音。...",
+              "id": "twittercryptofans"
+            },
+            {
+              "title": "合租小车🚗",
+              "url": "https://t.me/TogetherHub",
+              "countStr": "969",
+              "desc": "You can view and join right away.",
+              "id": "togetherhub"
+            },
+            {
+              "title": "CTG 中文社区",
+              "url": "https://t.me/CTGgroup",
+              "countStr": "429",
+              "desc": "新一代以区块链技术为基础的公链应用平台。CTG将区块链技术带入到日常的真实应用当中。CTG同时满足了企业和用户的高TPS需求。 注：进CTG官方微信群请加客服号：ctgcoinonblockchain",
+              "id": "ctggroup"
             }
           ]
         }
