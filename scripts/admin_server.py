@@ -421,7 +421,10 @@ small,.muted{{color:var(--muted)}}
 .badge{{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:#eef6fb;color:#1275a8;font-weight:800;font-size:12px}}
 .danger-text{{color:var(--danger)}}
 .success-text{{color:var(--ok)}}
-.actions{{display:flex;gap:8px;flex-wrap:wrap}}
+.actions{{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;white-space:nowrap}}
+.actions form{{display:inline-flex;margin:0}}
+.actions button{{min-width:64px}}
+td.action-cell{{width:150px;white-space:nowrap}}
 pre{{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;padding:16px;border-radius:12px}}
 @media(max-width:760px){{.header-inner{{align-items:flex-start;flex-direction:column}}main{{padding:16px}}.panel{{padding:14px}}}}
 </style>
@@ -627,7 +630,7 @@ pre{{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0
 <option value="0" {selected(ad['enabled'], 0)}>禁用</option>
 </select>
 </td>
-<td>
+<td class="action-cell">
 <form id="ad-{h(ad['id'])}" method="post" action="/ads/update{auth_suffix}">
 <input type="hidden" name="id" value="{h(ad['id'])}">
 </form>
