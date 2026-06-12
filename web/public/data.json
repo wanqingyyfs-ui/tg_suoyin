@@ -4183,7 +4183,101 @@
     }
   ],
   "ads": {
-    "items": [],
-    "positions": {}
+    "items": [
+      {
+        "id": 4,
+        "position": "bot_search_inline",
+        "title": "这里是一条广告位",
+        "description": "这里是一条广告位",
+        "url": "https://t.me/wqbaoku",
+        "imageUrl": "",
+        "sortOrder": 1
+      },
+      {
+        "id": 5,
+        "position": "bot_search_inline",
+        "title": "这里是第二条广告位",
+        "description": "这里是第二条广告位",
+        "url": "https://t.me/wqbaoku",
+        "imageUrl": "",
+        "sortOrder": 2
+      },
+      {
+        "id": 6,
+        "position": "bot_search_inline",
+        "title": "这里是第三条广告位",
+        "description": "这里是第三条广告位",
+        "url": "https://t.me/wqbaoku",
+        "imageUrl": "",
+        "sortOrder": 3
+      },
+      {
+        "id": 7,
+        "position": "bot_search_inline",
+        "title": "这里是其他广告位",
+        "description": "这里是其他广告位",
+        "url": "https://t.me/wqbaoku",
+        "imageUrl": "",
+        "sortOrder": 4
+      },
+      {
+        "id": 8,
+        "position": "bot_search_inline",
+        "title": "这里是其他广告位",
+        "description": "这里是其他广告位",
+        "url": "https://t.me/wqbaoku",
+        "imageUrl": "",
+        "sortOrder": 5
+      }
+    ],
+    "positions": {
+      "bot_search_inline": [
+        {
+          "id": 4,
+          "position": "bot_search_inline",
+          "title": "这里是一条广告位",
+          "description": "这里是一条广告位",
+          "url": "https://t.me/wqbaoku",
+          "imageUrl": "",
+          "sortOrder": 1
+        },
+        {
+          "id": 5,
+          "position": "bot_search_inline",
+          "title": "这里是第二条广告位",
+          "description": "这里是第二条广告位",
+          "url": "https://t.me/wqbaoku",
+          "imageUrl": "",
+          "sortOrder": 2
+        },
+        {
+          "id": 6,
+          "position": "bot_search_inline",
+          "title": "这里是第三条广告位",
+          "description": "这里是第三条广告位",
+          "url": "https://t.me/wqbaoku",
+          "imageUrl": "",
+          "sortOrder": 3
+        },
+        {
+          "id": 7,
+          "position": "bot_search_inline",
+          "title": "这里是其他广告位",
+          "description": "这里是其他广告位",
+          "url": "https://t.me/wqbaoku",
+          "imageUrl": "",
+          "sortOrder": 4
+        },
+        {
+          "id": 8,
+          "position": "bot_search_inline",
+          "title": "这里是其他广告位",
+          "description": "这里是其他广告位",
+          "url": "https://t.me/wqbaoku",
+          "imageUrl": "",
+          "sortOrder": 5
+        }
+      ]
+    }
   }
 }
