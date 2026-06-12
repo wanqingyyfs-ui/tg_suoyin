@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
-export const SITE_URL = 'https://www.rectg.com';
+// 站点域名配置（构建时可通过环境变量覆盖）
+export const SITE_URL = process.env.SITE_URL || 'https://www.rectg.com';
 
 export interface CategoryMeta {
   icon: string;

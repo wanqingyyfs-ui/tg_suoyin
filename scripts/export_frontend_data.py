@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import os
 import re
 import sqlite3
 
@@ -9,6 +10,9 @@ OUT_DIR = ROOT / "web" / "public"
 OUT_FILE = OUT_DIR / "data.json"
 SITEMAP_FILE = OUT_DIR / "sitemap.xml"
 ROBOTS_FILE = OUT_DIR / "robots.txt"
+
+# 站点域名配置（可通过环境变量覆盖）
+SITE_URL = os.environ.get("SITE_URL", "https://www.rectg.com")
 
 TYPE_LABELS = {
     "channel": "频道",
@@ -236,12 +240,12 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     OUT_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    sitemap_urls = ["<url><loc>https://www.rectg.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>"]
+    sitemap_urls = [f"<url><loc>{SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>"]
     for type_block in types:
         for category_block in type_block["categories"]:
             for item in category_block["items"]:
                 sitemap_urls.append(
-                    f"<url><loc>https://www.rectg.com/p/{item['id']}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>"
+                    f"<url><loc>{SITE_URL}/p/{item['id']}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>"
                 )
 
     sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -251,7 +255,7 @@ def main():
 
     SITEMAP_FILE.write_text(sitemap, encoding="utf-8")
     ROBOTS_FILE.write_text(
-        "User-agent: *\nAllow: /\nSitemap: https://www.rectg.com/sitemap.xml\n",
+        f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n",
         encoding="utf-8",
     )
 
