@@ -45,7 +45,7 @@ def row_to_item(row: sqlite3.Row) -> dict[str, Any]:
     entry_type = row["type"] or "channel"
     desc = row["clean_desc"] or row["description"] or ""
     title = row["clean_title"] or row["title"] or row["username"] or row["url"] or "未命名"
-    return {
+    item = {
         "id": row["id"],
         "title": title,
         "username": row["username"] or "",
@@ -64,6 +64,30 @@ def row_to_item(row: sqlite3.Row) -> dict[str, Any]:
         "created_at": row["created_at"] or "",
         "updated_at": row["updated_at"] or "",
     }
+    if "score" in row.keys():
+        item["score"] = int(row["score"] or 0)
+    return item
+
+
+def build_relevance_order(keyword: str) -> tuple[str, list[Any]]:
+    if not keyword:
+        return "COALESCE(count, 0) DESC, title COLLATE NOCASE, id DESC", []
+
+    exact = keyword
+    prefix = f"{keyword}%"
+    like = f"%{keyword}%"
+    score_sql = """
+        CASE WHEN lower(username) = lower(?) THEN 100 ELSE 0 END +
+        CASE WHEN lower(title) = lower(?) OR lower(clean_title) = lower(?) THEN 90 ELSE 0 END +
+        CASE WHEN lower(username) LIKE lower(?) THEN 70 ELSE 0 END +
+        CASE WHEN lower(title) LIKE lower(?) OR lower(clean_title) LIKE lower(?) THEN 60 ELSE 0 END +
+        CASE WHEN lower(category) LIKE lower(?) THEN 35 ELSE 0 END +
+        CASE WHEN lower(description) LIKE lower(?) OR lower(clean_desc) LIKE lower(?) THEN 20 ELSE 0 END +
+        CASE WHEN lower(url) LIKE lower(?) THEN 15 ELSE 0 END
+    """
+    params = [exact, exact, exact, prefix, like, like, like, like, like, like]
+    order_sql = "score DESC, COALESCE(count, 0) DESC, title COLLATE NOCASE, id DESC"
+    return score_sql + " AS score", params, order_sql
 
 
 def search_entries(
@@ -107,17 +131,16 @@ def search_entries(
 
     where_sql = " AND ".join(where)
 
+    select_score = "0 AS score"
+    score_params: list[Any] = []
     if sort == "latest":
-        order_sql = """
-            datetime(COALESCE(updated_at, created_at, '1970-01-01')) DESC,
-            id DESC
-        """
+        order_sql = "datetime(COALESCE(updated_at, created_at, '1970-01-01')) DESC, id DESC"
+    elif keyword:
+        select_score, score_params, order_sql = build_relevance_order(keyword)
+        sort = "relevance"
     else:
-        order_sql = """
-            COALESCE(count, 0) DESC,
-            title COLLATE NOCASE,
-            id DESC
-        """
+        order_sql = "COALESCE(count, 0) DESC, title COLLATE NOCASE, id DESC"
+        sort = "relevance"
 
     conn = connect_db()
     try:
@@ -131,13 +154,14 @@ def search_entries(
             SELECT
                 id, title, clean_title, username, url, type, count,
                 clean_desc, description, category,
-                keep, valid, private, created_at, updated_at
+                keep, valid, private, created_at, updated_at,
+                {select_score}
             FROM entries
             WHERE {where_sql}
             ORDER BY {order_sql}
             LIMIT ? OFFSET ?
             """,
-            [*params, safe_limit, offset],
+            [*score_params, *params, safe_limit, offset],
         ).fetchall()
     finally:
         conn.close()
@@ -198,7 +222,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="搜索 TG 索引数据库")
     parser.add_argument("keyword", nargs="?", default="", help="搜索关键词，不填则列出全部可见资源")
     parser.add_argument("--type", choices=TYPE_CHOICES, default=None, help="资源类型：channel/group/bot")
-    parser.add_argument("--category", default=None, help="分类名，例如：💻 数码科技")
+    parser.add_argument("--category", default=None, help="分类名，例如：💻 科技开发")
     parser.add_argument("--limit", type=int, default=20, help="每页数量，最大 100")
     parser.add_argument("--page", type=int, default=1, help="页码")
     parser.add_argument("--sort", choices=("relevance", "latest"), default="relevance", help="排序方式")
