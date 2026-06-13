@@ -5,7 +5,7 @@ import re
 import sqlite3
 import xml.sax.saxutils as xml_escape
 
-from categories import get_top_category, normalize_category, top_category_sort_key
+from categories import CATEGORY_ORDER, get_top_category, normalize_category, top_category_sort_key
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "rectg.db"
@@ -23,18 +23,40 @@ TYPE_LABELS = {
 }
 
 DEFAULT_CATEGORY = {
-    "channel": "🆕 新发现频道",
-    "group": "🌐 综合其他",
-    "bot": "🤖 机器人",
+    "channel": "🧭 综合导航",
+    "group": "👥 生活社群",
+    "bot": "🧰 软件工具",
 }
 
 SEO_KEYWORDS = {
-    "资讯内容": "新闻 快讯 加密货币 Web3 社媒 体育 热点资讯",
-    "技术资源": "数码科技 开发运维 信息安全 软件工具 科学上网",
-    "影音娱乐": "影视 音乐 动漫 游戏 网盘资源",
-    "生活社群": "学习阅读 创意设计 生活消费 地区社群 闲聊交友",
-    "工具导航": "综合导航 机器人 Telegram 工具 索引",
+    "新闻资讯": "新闻 快讯 资讯 媒体 财经 体育 社媒 热点",
+    "科技开发": "科技 数码 开发 编程 GitHub Python Linux Docker AI",
+    "软件工具": "软件 工具 插件 脚本 机器人 自动化 App 浏览器 效率",
+    "影音娱乐": "影视 电影 音乐 动漫 游戏 网盘 电视剧 4K",
+    "学习阅读": "学习 课程 教程 电子书 阅读 资料 设计 摄影",
+    "生活社群": "生活 社群 交友 同城 招聘 美食 旅游 优惠",
+    "加密货币": "加密货币 数字货币 区块链 比特币 以太坊 Web3",
+    "综合导航": "Telegram 索引 导航 目录 搜群 频道大全 群组大全",
 }
+
+EXPECTED_CATEGORY_SET = set(CATEGORY_ORDER)
+FORCED_CATEGORY_REPLACEMENTS = {
+    "🪙 加密货币": "💎 加密货币",
+    "💰 加密货币": "💎 加密货币",
+    "🤖 机器人": "🧭 综合导航",
+}
+
+
+def normalize_export_category(category: str | None, entry_type: str) -> str:
+    value = (category or "").strip()
+    if value in FORCED_CATEGORY_REPLACEMENTS:
+        return FORCED_CATEGORY_REPLACEMENTS[value]
+    normalized = normalize_category(value)
+    if normalized in FORCED_CATEGORY_REPLACEMENTS:
+        normalized = FORCED_CATEGORY_REPLACEMENTS[normalized]
+    if normalized in EXPECTED_CATEGORY_SET:
+        return normalized
+    return DEFAULT_CATEGORY.get(entry_type, "🧭 综合导航")
 
 
 def make_id(username, url, title):
@@ -131,8 +153,6 @@ def main():
     cur = conn.cursor()
 
     init_ads_table(conn)
-    conn.execute("UPDATE entries SET category = '🪙 加密货币' WHERE category IN ('💎 加密货币', '💰 加密货币')")
-    conn.commit()
 
     rows = cur.execute(
         """
@@ -163,7 +183,7 @@ def main():
     for row in rows:
         entry_type = row["type"] or "channel"
         type_label = TYPE_LABELS.get(entry_type, entry_type)
-        fine_category = normalize_category(row["category"]) or DEFAULT_CATEGORY.get(entry_type, "🌐 综合其他")
+        fine_category = normalize_export_category(row["category"], entry_type)
         top_category = get_top_category(fine_category)
         title = row["title"] or row["username"] or row["url"] or "未命名"
         url = row["url"] or f"https://t.me/{row['username']}"
