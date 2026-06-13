@@ -8,14 +8,14 @@ try {
     inject();
     injectSpeedInsights();
 } catch (error) {
-    console.warn('[rectg] analytics/speed-insights init failed:', error);
+    console.warn('[tg_suoyin] analytics/speed-insights init failed:', error);
 }
 
 function safeGetStorage(key) {
     try {
         return window.localStorage.getItem(key);
     } catch (error) {
-        console.warn('[rectg] localStorage get failed:', error);
+        console.warn('[tg_suoyin] localStorage get failed:', error);
         return null;
     }
 }
@@ -25,7 +25,7 @@ function safeSetStorage(key, value) {
         window.localStorage.setItem(key, value);
         return true;
     } catch (error) {
-        console.warn('[rectg] localStorage set failed:', error);
+        console.warn('[tg_suoyin] localStorage set failed:', error);
         return false;
     }
 }
@@ -42,7 +42,7 @@ function readDirectoryData() {
             ads: data.ads || { items: [], positions: {} },
         };
     } catch (error) {
-        console.error('[rectg] failed to parse directory data:', error);
+        console.error('[tg_suoyin] failed to parse directory data:', error);
         return { sections: [], allItems: [], ads: { items: [], positions: {} } };
     }
 }

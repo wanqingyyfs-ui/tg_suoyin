@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://www.rectg.com/sitemap.xml
+Sitemap: https://tg-suoyin.vercel.app/sitemap.xml

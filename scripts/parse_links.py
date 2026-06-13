@@ -60,15 +60,15 @@ def extract_username(url: str):
 
 
 def parse_readme(readme_path: Path) -> list:
-    """?? README.md????? t.me ???"""
+    """从 README.md 中提取所有 t.me 链接。"""
     content = readme_path.read_text(encoding="utf-8")
     entries = []
     current_section = ""
 
     type_map = {
-        "??": "channel",
-        "??": "group",
-        "???": "bot",
+        "频道": "channel",
+        "群组": "group",
+        "机器人": "bot",
     }
 
     for line in content.splitlines():
@@ -77,8 +77,8 @@ def parse_readme(readme_path: Path) -> list:
             current_section = heading if heading in type_map else ""
             continue
 
-        # ?? README ???
-        # | [??](https://t.me/sidehustleus) | 114 | ???????????????? |
+        # 兼容旧版 README 表格：
+        # | [名称](https://t.me/example) | 订阅数 | 简介 |
         m = re.match(
             r"\|\s*\[([^\]]+)\]\((https?://t\.me/[^)]+)\)\s*\|",
             line,
@@ -90,7 +90,7 @@ def parse_readme(readme_path: Path) -> list:
         name = m.group(1).strip()
         url = m.group(2).strip()
 
-        if name in ("??", "??", "---"):
+        if name in ("名称", "资源", "---"):
             continue
 
         entries.append({

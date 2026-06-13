@@ -1,6 +1,6 @@
 {
-    "name": "rectg - Telegram 精选导航",
-    "short_name": "rectg",
+    "name": "TG 索引 - Telegram 中文资源导航",
+    "short_name": "TG 索引",
     "description": "Telegram 优质中文频道与群组导航",
     "start_url": "/",
     "display": "standalone",

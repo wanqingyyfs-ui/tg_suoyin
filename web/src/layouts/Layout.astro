@@ -9,9 +9,9 @@ interface Props {
 }
 
 // 站点域名配置（可通过环境变量覆盖）
-const SITE_URL = import.meta.env.SITE_URL || 'https://www.rectg.com';
+const SITE_URL = import.meta.env.SITE || import.meta.env.SITE_URL || 'https://tg-suoyin.vercel.app';
 const {
-  title = 'rectg - Telegram 中文资源索引',
+  title = 'TG 索引 - Telegram 中文资源导航',
   description = '收录优质 Telegram 中文频道与群组，支持分类浏览、关键词搜索、详情页和直达链接。',
   canonicalPath = '/',
   ogType = 'website',
@@ -22,9 +22,9 @@ const ogImageUrl = `${SITE_URL}/og-image.png`;
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'rectg',
+  name: 'TG 索引',
   url: `${SITE_URL}/`,
-  description: 'Telegram 中文频道与群组精选索引',
+  description: 'Telegram 中文资源导航',
   potentialAction: {
     '@type': 'SearchAction',
     target: {
@@ -47,7 +47,7 @@ const jsonLd = JSON.stringify({
   <meta name="title" content={title} />
   <meta name="description" content={description} />
   <meta name="keywords" content="Telegram, TG群组, TG频道, 电报群, 电报导航, telegram中文, telegram频道推荐, telegram群组大全, 电报机器人" />
-  <meta name="author" content="rectg" />
+  <meta name="author" content="TG 索引" />
   <link rel="canonical" href={canonicalUrl} />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
 
@@ -90,7 +90,7 @@ const jsonLd = JSON.stringify({
   </script>
   <noscript>
     <div style="padding: 20px; text-align: center; background: #fff3cd; color: #856404;">
-      <strong>提示：</strong>您的浏览器禁用了 JavaScript，因此网页可能缺少某些交互功能。rectg 导航是一个收录优质 Telegram 中文频道与群组的聚合站，启用 JavaScript 可获得最佳的浏览、搜索与复制链接体验。
+      <strong>提示：</strong>您的浏览器禁用了 JavaScript，因此网页可能缺少某些交互功能。TG 索引是一个收录优质 Telegram 中文频道与群组的聚合站，启用 JavaScript 可获得最佳的浏览、搜索与复制链接体验。
     </div>
   </noscript>
   <slot />

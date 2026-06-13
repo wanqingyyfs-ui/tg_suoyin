@@ -1,12 +1,13 @@
 {
-  "name": "web",
+  "name": "tg-suoyin-web",
   "type": "module",
   "version": "0.0.4",
   "scripts": {
-    "dev": "node build-data.js && astro dev",
-    "build": "python ../scripts/export_frontend_data.py && astro build",
+    "dev": "python ../scripts/export_frontend_data.py && astro dev",
+    "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "export": "python ../scripts/export_frontend_data.py"
   },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",

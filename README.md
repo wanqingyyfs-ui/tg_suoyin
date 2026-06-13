@@ -1,4 +1,4 @@
-# rectg
+# TG 索引
 
 一个基于 SQLite、Python 爬虫和 Astro 前端的 Telegram 中文频道/群组搜索引擎项目。
 
@@ -7,13 +7,13 @@
 ## 当前维护仓库
 
 ```text
-https://github.com/wanqingyyfs-ui/rectg
+https://github.com/wanqingyyfs-ui/tg_suoyin
 ```
 
 ## 本地项目位置
 
 ```text
-D:\wanqing\projects\rectg
+D:\编程\tg_suoyin
 ```
 
 ## 当前阶段状态
@@ -96,7 +96,7 @@ pinyin-match
 ## 项目目录
 
 ```text
-rectg/
+tg_suoyin/
 ├── data/
 │   └── rectg.db
 ├── scripts/
@@ -135,7 +135,7 @@ rectg/
 激活方式：
 
 ```powershell
-cd D:\wanqing\projects\rectg
+cd D:\编程\tg_suoyin
 .\.venv\Scripts\Activate.ps1
 ```
 
@@ -148,7 +148,7 @@ python -c "import sys, requests, bs4, lxml; print(sys.executable); print('OK')"
 预期 Python 路径：
 
 ```text
-D:\wanqing\projects\rectg\.venv\Scripts\python.exe
+D:\编程\tg_suoyin\.venv\Scripts\python.exe
 ```
 
 ## 安装依赖
@@ -156,7 +156,7 @@ D:\wanqing\projects\rectg\.venv\Scripts\python.exe
 ### Python 依赖
 
 ```powershell
-cd D:\wanqing\projects\rectg
+cd D:\编程\tg_suoyin
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
@@ -164,7 +164,7 @@ pip install -r requirements.txt
 ### 前端依赖
 
 ```powershell
-cd D:\wanqing\projects\rectg\web
+cd D:\编程\tg_suoyin\web
 npm install
 ```
 
@@ -262,7 +262,7 @@ python scripts\manage_ads.py init
 根目录构建：
 
 ```powershell
-cd D:\wanqing\projects\rectg
+cd D:\编程\tg_suoyin
 npm run build
 ```
 
@@ -537,7 +537,7 @@ python scripts\manage_ads.py delete 1 --yes
 }
 ```
 
-当前前端暂时不读取 `ads` 字段，不影响原有 `categories` 和 `types`。
+当前前端已读取 `ads` 字段，支持首页顶部、Hero 下方和搜索结果内联广告位。
 
 ## 前端数据导出
 
@@ -556,7 +556,7 @@ python scripts\export_frontend_data.py
 成功输出示例：
 
 ```text
-✅ Generated data.json from SQLite: D:\wanqing\projects\rectg\web\public\data.json
+✅ Generated data.json from SQLite: D:\编程\tg_suoyin\web\public\data.json
 ✅ Categories: 22
 ✅ Types: 2
 ✅ Items: 545

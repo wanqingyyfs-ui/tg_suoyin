@@ -12,7 +12,7 @@ SITEMAP_FILE = OUT_DIR / "sitemap.xml"
 ROBOTS_FILE = OUT_DIR / "robots.txt"
 
 # 站点域名配置（可通过环境变量覆盖）
-SITE_URL = os.environ.get("SITE_URL", "https://www.rectg.com")
+SITE_URL = os.environ.get("SITE_URL", "https://tg-suoyin.vercel.app").rstrip("/")
 
 TYPE_LABELS = {
     "channel": "频道",

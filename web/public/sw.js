@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rectg-cache-v2';
+const CACHE_NAME = 'tg-suoyin-cache-v1';
 const urlsToCache = [
     '/',
     '/index.html',

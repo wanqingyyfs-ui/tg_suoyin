@@ -18,7 +18,7 @@ const pickText = (...values) =>
 const resolvedCategoryName = pickText(categoryName, categoryFullName, '未分类');
 const resolvedCategoryFullName = pickText(categoryFullName, categoryName, '未分类');
 const colorClass = getAvatarColorClass(firstLetter);
-const pageTitle = `${item.title} - rectg`;
+const pageTitle = `${item.title} - TG 索引`;
 const pageDescription = item.desc
   ? item.desc.slice(0, 120)
   : `${item.title} 的 Telegram ${typeName}详情，包含分类、订阅数和直达链接。`;
