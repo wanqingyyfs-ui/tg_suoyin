@@ -32,6 +32,10 @@ https://github.com/wanqingyyfs-ui/tg_suoyin
 
 data/rectg.db -> scripts/categorize.py -> scripts/export_frontend_data.py -> web/public/data.json、web/public/sitemap.xml、web/public/robots.txt -> Astro build -> Vercel 静态部署。
 
+配套采集器项目数据链路：
+
+tg_suoyin_collector/exports/tg_suoyin_links.jsonl -> scripts/import_collected_links.py -> links 表 -> scripts/crawl.py --new -> entries 表 -> npm run rebuild。
+
 ## 常用命令
 
 安装依赖：
@@ -51,6 +55,17 @@ npm run export
 
 npm run build
 
+从采集器导入候选链接：
+
+python scripts/import_collected_links.py --file ../tg_suoyin_collector/exports/tg_suoyin_links.jsonl
+npm run import-collected -- --file ../tg_suoyin_collector/exports/tg_suoyin_links.jsonl
+
+导入采集器数据后的推荐流程：
+
+python scripts/crawl.py --new
+npm run rebuild
+npm run build
+
 搜索数据库：
 
 python scripts/search_entries.py 科技 --limit 10
@@ -64,6 +79,7 @@ python scripts/search_entries.py 网盘 --format json
 - scripts/categorize.py：清洗、过滤和细分类
 - scripts/filter_rules.py：过滤规则
 - scripts/export_frontend_data.py：导出前端数据、站点地图和 robots.txt
+- scripts/import_collected_links.py：导入 tg_suoyin_collector 审核通过的候选链接
 - scripts/search_entries.py：命令行搜索工具
 - scripts/manage_ads.py：广告位管理
 - web/src：Astro 前端源码
@@ -78,3 +94,4 @@ python scripts/search_entries.py 网盘 --format json
 4. 不写死 https://www.rectg.com。
 5. 分类常量统一由 scripts/categories.py 管理。
 6. 部署前必须确认 data.json 和 sitemap.xml 已由最新数据库重新生成。
+7. 采集器只导入 links 表，最终展示仍必须经过 crawl、filter、categorize、export 流程。
