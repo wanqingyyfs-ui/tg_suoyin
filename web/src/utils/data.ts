@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 
-// 站点域名配置（构建时可通过环境变量覆盖）
 export const SITE_URL = process.env.SITE_URL || 'https://tg-suoyin.vercel.app';
 
 export interface CategoryMeta {
@@ -18,6 +17,7 @@ export interface RawItem {
   countStr: string;
   desc: string;
   id: string;
+  fineCategory?: string;
 }
 
 export interface DirectoryItem extends RawItem {
@@ -27,6 +27,8 @@ export interface DirectoryItem extends RawItem {
   categoryFullName: string;
   categoryIcon: string;
   categoryKeywords: string;
+  topCategoryName: string;
+  topCategoryFullName: string;
 }
 
 export interface TypeGroup {
@@ -74,11 +76,6 @@ export interface DirectoryData {
   ads: AdsData;
 }
 
-const EMPTY_ADS: AdsData = {
-  items: [],
-  positions: {},
-};
-
 export function loadSiteData(): SiteData {
   const dataPath = path.resolve(process.cwd(), 'public/data.json');
   return JSON.parse(fs.readFileSync(dataPath, 'utf-8')) as SiteData;
@@ -97,6 +94,14 @@ function hashText(value: string): number {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+function splitFullName(fullName?: string): { icon: string; name: string; fullName: string } {
+  const value = (fullName || '').trim();
+  const match = value.match(/^(\S+)\s+(.*)$/);
+  if (!value) return { icon: '', name: '未分类', fullName: '未分类' };
+  if (!match) return { icon: '', name: value, fullName: value };
+  return { icon: match[1], name: match[2].trim(), fullName: value };
 }
 
 function getFeaturedItems(items: DirectoryItem[], size = 18): DirectoryItem[] {
@@ -126,22 +131,27 @@ export function buildDirectoryData(data = loadSiteData()): DirectoryData {
 
   data.types.forEach((typeObj) => {
     typeObj.categories.forEach((catObj) => {
-      const catMeta = data.categories.find((category) => category.fullName === catObj.fullName);
-      if (!catMeta) return;
+      const topMeta = data.categories.find((category) => category.fullName === catObj.fullName);
+      if (!topMeta) return;
 
-      const group = categoryGroups.get(catMeta.id);
+      const group = categoryGroups.get(topMeta.id);
       if (!group) return;
 
       group.items.push(
-        ...catObj.items.map((item) => ({
-          ...item,
-          typeName: typeObj.name,
-          categoryId: catMeta.id,
-          categoryName: catMeta.name,
-          categoryFullName: catMeta.fullName,
-          categoryIcon: catMeta.icon,
-          categoryKeywords: catMeta.keywords || '',
-        })),
+        ...catObj.items.map((item) => {
+          const fineMeta = splitFullName(item.fineCategory || catObj.fullName);
+          return {
+            ...item,
+            typeName: typeObj.name,
+            categoryId: topMeta.id,
+            categoryName: fineMeta.name,
+            categoryFullName: fineMeta.fullName,
+            categoryIcon: fineMeta.icon || topMeta.icon,
+            categoryKeywords: topMeta.keywords || '',
+            topCategoryName: topMeta.name,
+            topCategoryFullName: topMeta.fullName,
+          };
+        }),
       );
     });
   });
