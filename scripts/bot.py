@@ -16,11 +16,12 @@ from typing import Any
 
 import requests
 
-from search_entries import DB_PATH, TYPE_CHOICES, search_entries
+from search_entries import DB_PATH, TYPE_CHOICES, TYPE_LABELS, search_entries
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT_DIR / ".env"
+
 DEFAULT_LIMIT = 15
 MAX_MESSAGE_LENGTH = 3900
 BOT_AD_POSITION = "bot_search_inline"
@@ -33,15 +34,12 @@ QUERY_CACHE: dict[str, dict[str, Any]] = {}
 def load_env_file(path: Path = ENV_PATH) -> None:
     if not path.exists():
         return
-
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        os.environ.setdefault(key, value)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 def env_int(name: str, default: int) -> int:
@@ -69,7 +67,7 @@ def safe_error_text(error: Exception) -> str:
     text = str(error)
     marker = "/bot"
     if marker in text:
-        text = text.split(marker, 1)[0] + "/bot<hidden>"
+        text = text.split(marker, 1)[0] + "/bot<已隐藏>"
     return text
 
 
@@ -89,16 +87,16 @@ class TelegramClient:
         try:
             response = self.session.post(url, json=payload or {}, timeout=self.timeout)
         except requests.RequestException as exc:
-            raise TelegramApiError(f"Telegram request failed: {method}: {safe_error_text(exc)}") from exc
+            raise TelegramApiError(f"Telegram 请求失败：{method}：{safe_error_text(exc)}") from exc
 
         try:
             data = response.json()
         except ValueError as exc:
-            raise TelegramApiError(f"Telegram response is not JSON: {method}: HTTP {response.status_code}") from exc
+            raise TelegramApiError(f"Telegram 返回内容不是 JSON：{method}：HTTP {response.status_code}") from exc
 
         if not response.ok or not data.get("ok"):
             description = data.get("description") or f"HTTP {response.status_code}"
-            raise TelegramApiError(f"Telegram API error in {method}: {description}")
+            raise TelegramApiError(f"Telegram API 报错：{method}：{description}")
 
         return data.get("result")
 
@@ -150,8 +148,7 @@ class TelegramClient:
         try:
             self.request("editMessageText", payload)
         except TelegramApiError as exc:
-            message = str(exc)
-            if "message is not modified" in message.lower():
+            if "message is not modified" in str(exc).lower():
                 return
             raise
 
@@ -199,7 +196,7 @@ def load_bot_ads(position: str = BOT_AD_POSITION) -> list[dict[str, Any]]:
             "description": row["description"] or "",
             "url": row["url"] or "",
             "imageUrl": row["image_url"] or "",
-            "position": row["position"] or BOT_AD_POSITION,
+            "position": row["position"] or position,
             "sortOrder": row["sort_order"] or 0,
         }
         for row in rows
@@ -301,8 +298,9 @@ def format_item(item: dict[str, Any]) -> str:
     title = truncate_text(item.get("title") or item.get("username") or "未命名", TITLE_MAX_CHARS)
     url = item.get("url") or ""
     icon = type_icon(item.get("type") or "")
+    type_label = item.get("typeLabel") or TYPE_LABELS.get(item.get("type"), "资源")
     count = item.get("countStr") or "-"
-    return f'{icon} <a href="{escape(url)}">{escape(title)}</a>  {escape(count)}'
+    return f'{icon} <a href="{escape(url)}">{escape(title)}</a>  {escape(type_label)}｜{escape(count)}'
 
 
 def format_ads() -> list[str]:
@@ -323,31 +321,15 @@ def prepend_ads(lines: list[str]) -> list[str]:
 
 
 def build_keyboard(request: SearchRequest, result: dict[str, Any]) -> dict[str, Any]:
-    group_request = SearchRequest(
-        keyword=request.keyword,
-        entry_type="group",
-        category=request.category,
-        limit=request.limit,
-        sort="relevance",
-    )
-    channel_request = SearchRequest(
-        keyword=request.keyword,
-        entry_type="channel",
-        category=request.category,
-        limit=request.limit,
-        sort="relevance",
-    )
-    latest_request = SearchRequest(
-        keyword=request.keyword,
-        entry_type=None,
-        category=request.category,
-        limit=request.limit,
-        sort="latest",
-    )
+    group_request = SearchRequest(keyword=request.keyword, entry_type="group", category=request.category, limit=request.limit)
+    channel_request = SearchRequest(keyword=request.keyword, entry_type="channel", category=request.category, limit=request.limit)
+    bot_request = SearchRequest(keyword=request.keyword, entry_type="bot", category=request.category, limit=request.limit)
+    latest_request = SearchRequest(keyword=request.keyword, entry_type=None, category=request.category, limit=request.limit, sort="latest")
 
     first_row = [
         {"text": "👥 群组", "callback_data": f"s:{make_query_token(group_request)}:1"},
         {"text": "📢 频道", "callback_data": f"s:{make_query_token(channel_request)}:1"},
+        {"text": "🤖 机器人", "callback_data": f"s:{make_query_token(bot_request)}:1"},
     ]
 
     second_row: list[dict[str, str]] = [
@@ -383,12 +365,8 @@ def build_result_message(request: SearchRequest) -> tuple[str, dict[str, Any] | 
 
     header = [f"🔎 <b>{escape(query_title)}</b>"]
     filters = []
-    if request.entry_type == "group":
-        filters.append("群组")
-    elif request.entry_type == "channel":
-        filters.append("频道")
-    elif request.entry_type == "bot":
-        filters.append("机器人")
+    if request.entry_type:
+        filters.append(TYPE_LABELS.get(request.entry_type, request.entry_type))
     if request.sort == "latest":
         filters.append("最新")
     if request.category:
@@ -410,7 +388,7 @@ def build_result_message(request: SearchRequest) -> tuple[str, dict[str, Any] | 
             body.append(format_item(item))
 
     body.append("")
-    body.append(f"👇点击按钮，筛选资源类型【第{result['page']}页】")
+    body.append(f"👇 点击按钮筛选资源类型【第 {result['page']} 页】")
 
     return "\n".join(body), build_keyboard(request, result)
 
@@ -426,13 +404,17 @@ def handle_message(client: TelegramClient, message: dict[str, Any]) -> None:
 
     if text.startswith("/start") or text.startswith("/help"):
         help_text = (
-            "你好，我是 rectg 搜索 Bot。\n\n"
-            "直接发送关键词即可搜索 Telegram 中文频道/群组。\n\n"
+            "你好，我是 TG 索引搜索机器人。\n\n"
+            "直接发送关键词即可搜索 Telegram 中文频道、群组和机器人。\n\n"
             "示例：\n"
             "金边美食\n"
-            "AI科技\n"
+            "AI 科技\n"
             "东南亚柬埔寨新闻\n\n"
-            "按钮说明：群组/频道按类型筛选，最新按添加时间排序且不区分类型。"
+            "高级用法：\n"
+            "/search 影视 --type channel\n"
+            "/search AI --type group\n"
+            "/search 工具 --sort latest\n\n"
+            "按钮说明：群组、频道、机器人用于按类型筛选；最新按更新时间排序。"
         )
         client.send_message(chat_id, "\n".join(prepend_ads([help_text])), reply_to_message_id=message_id)
         return
@@ -464,7 +446,7 @@ def handle_callback_query(client: TelegramClient, callback_query: dict[str, Any]
 
     cached = QUERY_CACHE.get(token)
     if not cached:
-        client.send_message(chat_id, "\n".join(prepend_ads(["分页状态已失效，请重新发送关键词搜索。"])))
+        client.send_message(chat_id, "\n".join(prepend_ads(["分页状态已失效，请重新发送关键词搜索。"])) )
         return
 
     request = SearchRequest(
@@ -481,7 +463,7 @@ def handle_callback_query(client: TelegramClient, callback_query: dict[str, Any]
 
 def run_polling(client: TelegramClient, polling_timeout: int) -> None:
     offset = None
-    print("✅ Bot started. Press Ctrl+C to stop.")
+    print("✅ 机器人已启动。按 Ctrl+C 停止。")
     while True:
         try:
             updates = client.get_updates(offset=offset, timeout=polling_timeout)
@@ -492,27 +474,27 @@ def run_polling(client: TelegramClient, polling_timeout: int) -> None:
                 elif "callback_query" in update:
                     handle_callback_query(client, update["callback_query"])
         except KeyboardInterrupt:
-            print("\n已停止 Bot")
+            print("\n已停止机器人。")
             return
         except Exception as exc:
-            print(f"❌ Bot loop error: {safe_error_text(exc)}", file=sys.stderr)
+            print(f"❌ 机器人运行异常：{safe_error_text(exc)}", file=sys.stderr)
             time.sleep(3)
 
 
 def main() -> None:
     load_env_file()
-    parser = argparse.ArgumentParser(description="rectg Telegram 搜索 Bot")
-    parser.add_argument("--token", default=os.environ.get("TELEGRAM_BOT_TOKEN"), help="Telegram Bot Token，也可写入 .env")
+    parser = argparse.ArgumentParser(description="TG 索引 Telegram 搜索机器人")
+    parser.add_argument("--token", default=os.environ.get("TELEGRAM_BOT_TOKEN"), help="Telegram Bot Token，也可以写入 .env")
     parser.add_argument("--timeout", type=int, default=env_int("BOT_REQUEST_TIMEOUT", 30), help="HTTP 请求超时秒数")
     parser.add_argument("--polling-timeout", type=int, default=env_int("BOT_POLLING_TIMEOUT", 25), help="getUpdates 长轮询秒数")
     args = parser.parse_args()
 
     if not args.token:
-        raise SystemExit("❌ 缺少 TELEGRAM_BOT_TOKEN。请在 .env 或环境变量中填写 Token。")
+        raise SystemExit("❌ 缺少 TELEGRAM_BOT_TOKEN。请在后台 Bot 配置页保存 Token，或写入 .env，或使用 --token 传入。")
 
     client = TelegramClient(args.token, timeout=args.timeout)
     me = client.request("getMe")
-    print(f"✅ Logged in as @{me.get('username') or me.get('first_name')}")
+    print(f"✅ 已登录机器人：@{me.get('username') or me.get('first_name')}")
     run_polling(client, polling_timeout=args.polling_timeout)
 
 
