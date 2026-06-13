@@ -1,4 +1,4 @@
-"""Shared filtering rules for rectg crawler and maintenance scripts."""
+"""Shared filtering rules for TG 索引 crawler and maintenance scripts."""
 from __future__ import annotations
 
 import re
@@ -8,8 +8,8 @@ from typing import Mapping, Any
 import opencc
 
 
-MIN_CHANNEL_SUBSCRIBERS = 1
-MIN_GROUP_MEMBERS = 1
+MIN_CHANNEL_SUBSCRIBERS = 1000
+MIN_GROUP_MEMBERS = 200
 INACTIVE_DAYS_THRESHOLD = 90
 TRADITIONAL_RATIO_THRESHOLD = 0.10
 
