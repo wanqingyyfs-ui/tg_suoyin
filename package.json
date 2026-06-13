@@ -5,6 +5,7 @@
     "install": "cd web && npm install",
     "build": "cd web && npm run build",
     "export": "cd web && npm run export",
+    "rebuild": "python scripts/rebuild_index.py",
     "dev": "cd web && npm run dev"
   }
 }
