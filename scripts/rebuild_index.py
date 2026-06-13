@@ -16,19 +16,17 @@ EXPORT_SCRIPT = ROOT_DIR / "scripts" / "export_frontend_data.py"
 
 
 def run_script(script: Path) -> None:
-    print(f"\n▶ 执行：{script.relative_to(ROOT_DIR)}")
+    """运行子脚本。
+
+    Windows PowerShell 下子进程输出可能是系统本地编码，不强制按 UTF-8 捕获，
+    直接继承当前终端输出，避免 UnicodeDecodeError。
+    """
+    print(f"\n▶ 执行：{script.relative_to(ROOT_DIR)}", flush=True)
     completed = subprocess.run(
         [sys.executable, str(script)],
         cwd=str(ROOT_DIR),
-        text=True,
-        encoding="utf-8",
-        capture_output=True,
         check=False,
     )
-    if completed.stdout:
-        print(completed.stdout)
-    if completed.stderr:
-        print(completed.stderr, file=sys.stderr)
     if completed.returncode != 0:
         raise SystemExit(f"❌ 脚本执行失败：{script}")
 
@@ -57,12 +55,11 @@ def normalize_existing_categories() -> None:
     # 清理后台分类表里的旧分类，只保留当前大类。
     try:
         conn.execute("DELETE FROM categories")
-        now_sql = "datetime('now')"
         for index, category in enumerate(CATEGORY_ORDER):
             conn.execute(
-                f"""
+                """
                 INSERT OR IGNORE INTO categories (name, sort_order, created_at, updated_at)
-                VALUES (?, ?, {now_sql}, {now_sql})
+                VALUES (?, ?, datetime('now'), datetime('now'))
                 """,
                 (category, index),
             )
