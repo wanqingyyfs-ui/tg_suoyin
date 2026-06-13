@@ -1,4 +1,4 @@
-﻿# =========================
+# =========================
 # OS generated files
 # =========================
 .DS_Store
@@ -118,6 +118,9 @@ web/.netlify/
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 
 # Ignore data backups / temporary exports
 data/*.bak
@@ -125,6 +128,9 @@ data/*.backup
 data/*.tmp
 data/*.temp
 data/*.log
+web/public/data.json.tmp
+web/public/sitemap.xml.tmp
+web/public/robots.txt.tmp
 
 # Ignore crawler raw dumps if generated later
 data/raw/
