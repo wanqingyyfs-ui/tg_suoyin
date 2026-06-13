@@ -8,7 +8,7 @@ try {
     inject();
     injectSpeedInsights();
 } catch (error) {
-    console.warn('[tg_suoyin] analytics/speed-insights init failed:', error);
+    console.warn('[tg_suoyin] analytics init failed:', error);
 }
 
 function safeGetStorage(key) {
@@ -33,7 +33,6 @@ function safeSetStorage(key, value) {
 function readDirectoryData() {
     const payload = document.getElementById('directory-data');
     if (!payload?.textContent) return { sections: [], allItems: [], ads: { items: [], positions: {} } };
-
     try {
         const data = JSON.parse(payload.textContent);
         return {
@@ -62,6 +61,7 @@ const activeSection = document.getElementById('active-section');
 const activeSectionTitle = document.getElementById('active-section-title');
 const activeSectionMeta = document.getElementById('active-section-meta');
 const activeGrid = document.getElementById('active-grid');
+
 const directoryData = readDirectoryData();
 const sections = Array.isArray(directoryData.sections) ? directoryData.sections : [];
 const allItems = Array.isArray(directoryData.allItems) ? directoryData.allItems : [];
@@ -93,28 +93,22 @@ function getAvatarColorClass(value) {
 
 function getTelegramUsername(url) {
     if (!url || !url.includes('t.me/')) return '';
-    const parts = url.split('t.me/');
-    return parts[1]?.split('/')[0]?.split('?')[0] || '';
+    return url.split('t.me/')[1]?.split('/')[0]?.split('?')[0] || '';
 }
 
 function setHighlightedText(target, text, matchPositions) {
     if (!target) return;
     target.textContent = '';
-
     if (!matchPositions || !Array.isArray(matchPositions)) {
         target.textContent = text;
         return;
     }
-
     const start = Math.max(0, Math.min(text.length, matchPositions[0]));
     const end = Math.max(start, Math.min(text.length - 1, matchPositions[1]));
-
     target.appendChild(document.createTextNode(text.substring(0, start)));
-
     const mark = document.createElement('mark');
     mark.textContent = text.substring(start, end + 1);
     target.appendChild(mark);
-
     target.appendChild(document.createTextNode(text.substring(end + 1)));
 }
 
@@ -128,7 +122,6 @@ function createCopyIcon() {
     svg.setAttribute('stroke-width', '2');
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');
-
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('x', '9');
     rect.setAttribute('y', '9');
@@ -136,12 +129,24 @@ function createCopyIcon() {
     rect.setAttribute('height', '13');
     rect.setAttribute('rx', '2');
     rect.setAttribute('ry', '2');
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1');
-
-    svg.append(rect, path);
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1');
+    svg.append(rect, p);
     return svg;
+}
+
+function searchTextForItem(item) {
+    return [
+        item.title,
+        item.desc,
+        item.url,
+        item.typeName,
+        item.categoryFullName,
+        item.categoryKeywords,
+        item.fineCategory,
+        item.topCategoryFullName,
+        item.topCategoryName,
+    ].filter(Boolean).join(' ').toLowerCase();
 }
 
 function createCard(item, matches = {}) {
@@ -151,12 +156,11 @@ function createCard(item, matches = {}) {
     const username = getTelegramUsername(url);
     const firstLetter = title ? title.substring(0, 1).toUpperCase() : '?';
     const article = document.createElement('article');
-
     article.className = 'card';
     article.dataset.title = title;
     article.dataset.desc = desc;
     article.dataset.url = url;
-    article.dataset.category = [item.categoryFullName, item.categoryKeywords, item.typeName].filter(Boolean).join(' ');
+    article.dataset.category = searchTextForItem(item);
 
     const header = document.createElement('div');
     header.className = 'card-header';
@@ -169,9 +173,7 @@ function createCard(item, matches = {}) {
         img.src = `https://unavatar.io/telegram/${username}`;
         img.loading = 'lazy';
         img.alt = username;
-        img.addEventListener('error', () => {
-            icon.textContent = firstLetter;
-        });
+        img.addEventListener('error', () => { icon.textContent = firstLetter; });
         icon.appendChild(img);
     } else {
         icon.textContent = firstLetter;
@@ -179,7 +181,6 @@ function createCard(item, matches = {}) {
 
     const titleWrap = document.createElement('div');
     titleWrap.className = 'card-title-wrap';
-
     const titleLink = document.createElement('a');
     titleLink.href = `/p/${item.id}`;
     titleLink.className = 'card-title';
@@ -188,11 +189,9 @@ function createCard(item, matches = {}) {
 
     const meta = document.createElement('div');
     meta.className = 'card-meta';
-
     const tag = document.createElement('span');
     tag.className = 'tag';
     tag.textContent = item.typeName || '资源';
-
     const count = document.createElement('span');
     count.textContent = `👥 ${item.countStr || '-'}`;
     meta.append(tag, count);
@@ -206,26 +205,22 @@ function createCard(item, matches = {}) {
 
     const actions = document.createElement('div');
     actions.className = 'card-actions';
-
     const directLink = document.createElement('a');
     directLink.className = 'card-action card-action-primary';
     directLink.href = url;
     directLink.target = '_blank';
     directLink.rel = 'noopener noreferrer';
     directLink.textContent = '直达';
-
     const detailLink = document.createElement('a');
     detailLink.className = 'card-action';
     detailLink.href = `/p/${item.id}`;
     detailLink.textContent = '详情';
-
     const copyBtn = document.createElement('button');
     copyBtn.className = 'card-action card-copy-btn';
     copyBtn.type = 'button';
     copyBtn.setAttribute('aria-label', '复制链接');
     copyBtn.dataset.url = url;
     copyBtn.append(createCopyIcon(), document.createTextNode('复制'));
-
     actions.append(directLink, detailLink, copyBtn);
     article.append(header, descEl, actions);
     return article;
@@ -234,32 +229,26 @@ function createCard(item, matches = {}) {
 function createAdCard(ad) {
     const article = document.createElement('article');
     article.className = 'card ad-result-card';
-
     const label = document.createElement('div');
     label.className = 'ad-label';
     label.textContent = '广告';
-
     const title = document.createElement('a');
     title.href = ad.url || '#';
     title.target = '_blank';
     title.rel = 'sponsored noopener noreferrer';
     title.className = 'card-title';
     title.textContent = ad.title || '推荐';
-
     const desc = document.createElement('div');
     desc.className = 'card-desc';
     desc.textContent = ad.description || '推广内容';
-
     const actions = document.createElement('div');
     actions.className = 'card-actions';
-
     const link = document.createElement('a');
     link.className = 'card-action card-action-primary';
     link.href = ad.url || '#';
     link.target = '_blank';
     link.rel = 'sponsored noopener noreferrer';
     link.textContent = '查看';
-
     actions.append(link);
     article.append(label, title, desc, actions);
     return article;
@@ -270,7 +259,6 @@ function renderCards(items, matchMap = new Map(), options = {}) {
     const fragment = document.createDocumentFragment();
     const inlineAds = options.withAds ? searchInlineAds : [];
     const interval = 8;
-
     items.forEach((item, index) => {
         fragment.appendChild(createCard(item, matchMap.get(item.id) || {}));
         if (inlineAds.length > 0 && (index + 1) % interval === 0 && index + 1 < items.length) {
@@ -299,22 +287,17 @@ function updateUrl({ sectionId, query, replace = false }) {
         url.searchParams.delete('c');
         url.searchParams.delete('q');
     }
-
-    const method = replace ? 'replaceState' : 'pushState';
-    window.history[method]({}, '', url);
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', url);
 }
 
 function setSectionHeader(title, count, subtitle = '') {
     if (activeSectionTitle) activeSectionTitle.textContent = title;
-    if (activeSectionMeta) {
-        activeSectionMeta.textContent = subtitle || `(${count})`;
-    }
+    if (activeSectionMeta) activeSectionMeta.textContent = subtitle || `(${count})`;
 }
 
 function renderSection(id, options = {}) {
     const section = sections.find((candidate) => candidate.id === id) || sections[0];
     if (!section) return;
-
     currentSectionId = section.id;
     if (activeSection) activeSection.dataset.currentId = section.id;
     setActiveNav(section.id);
@@ -325,9 +308,7 @@ function renderSection(id, options = {}) {
     if (searchInput && options.clearSearch) searchInput.value = '';
     if (options.updateUrl) updateUrl({ sectionId: section.id });
     if (options.scroll) {
-        const top = activeSection
-            ? activeSection.getBoundingClientRect().top + window.pageYOffset - 80
-            : 0;
+        const top = activeSection ? activeSection.getBoundingClientRect().top + window.pageYOffset - 80 : 0;
         window.scrollTo({ top, behavior: 'smooth' });
     }
 }
@@ -335,14 +316,10 @@ function renderSection(id, options = {}) {
 function getMatches(item, query) {
     const title = item.title || '';
     const desc = item.desc || '';
-    const url = item.url || '';
-    const category = [item.categoryFullName, item.categoryKeywords, item.typeName].filter(Boolean).join(' ');
     const matchTitle = PinyinMatch.match(title, query);
     const matchDesc = PinyinMatch.match(desc, query);
-    const matchCategory = category.toLowerCase().includes(query);
-    const matchUrl = url.toLowerCase().includes(query);
-
-    if (!matchTitle && !matchDesc && !matchCategory && !matchUrl) return null;
+    const matchMeta = searchTextForItem(item).includes(query);
+    if (!matchTitle && !matchDesc && !matchMeta) return null;
     return { title: matchTitle, desc: matchDesc };
 }
 
@@ -352,7 +329,6 @@ function renderSearch(rawQuery, options = {}) {
         renderSection(currentSectionId, { updateUrl: options.updateUrl, clearSearch: false });
         return;
     }
-
     const matchMap = new Map();
     const results = allItems.filter((item) => {
         const matches = getMatches(item, query);
@@ -360,7 +336,6 @@ function renderSearch(rawQuery, options = {}) {
         matchMap.set(item.id, matches);
         return true;
     });
-
     setActiveNav('');
     setSectionHeader('搜索结果', results.length, `“${rawQuery.trim()}” · ${results.length} 个资源`);
     renderCards(results, matchMap, { withAds: true });
@@ -372,13 +347,10 @@ function renderSearch(rawQuery, options = {}) {
 function initTheme() {
     const savedTheme = safeGetStorage('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
     document.body.classList.toggle('dark', savedTheme === 'dark' || (!savedTheme && prefersDark));
-
     themeToggle?.addEventListener('click', () => {
         document.body.classList.toggle('dark');
-        const isDark = document.body.classList.contains('dark');
-        safeSetStorage('theme', isDark ? 'dark' : 'light');
+        safeSetStorage('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
     });
 }
 
@@ -388,17 +360,14 @@ function initSidebar() {
         sidebarOverlay?.classList.add('open');
         document.body.style.overflow = 'hidden';
     }
-
     function closeSidebar() {
         sidebar?.classList.remove('open');
         sidebarOverlay?.classList.remove('open');
         document.body.style.overflow = '';
     }
-
     menuBtn?.addEventListener('click', openSidebar);
     closeSidebarBtn?.addEventListener('click', closeSidebar);
     sidebarOverlay?.addEventListener('click', closeSidebar);
-
     document.querySelectorAll('.nav-item').forEach((item) => {
         item.addEventListener('click', () => {
             const id = item.dataset.id || 'featured';
@@ -419,7 +388,6 @@ async function copyUrl(url) {
         await navigator.clipboard.writeText(url);
         return true;
     }
-
     const textarea = document.createElement('textarea');
     textarea.value = url;
     textarea.style.position = 'fixed';
@@ -435,10 +403,8 @@ function initInteractions() {
     contentContainer?.addEventListener('click', async (event) => {
         const target = event.target;
         if (!(target instanceof Element)) return;
-
         const btn = target.closest('.card-copy-btn');
         if (!btn) return;
-
         event.preventDefault();
         const url = btn.getAttribute('data-url') || '';
         try {
@@ -452,28 +418,20 @@ function initInteractions() {
 function initScrollFeatures() {
     window.addEventListener('scroll', () => {
         backToTopBtn?.classList.toggle('show', window.scrollY > 500);
-
         if (progressBar) {
             const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
             const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
             progressBar.style.width = height > 0 ? `${(winScroll / height) * 100}%` : '0';
         }
     });
-
-    backToTopBtn?.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    backToTopBtn?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 }
 
 function initRouting() {
     const params = new URLSearchParams(window.location.search);
     const cat = params.get('c');
     const query = params.get('q');
-
-    if (cat) {
-        renderSection(cat, { updateUrl: false, clearSearch: false });
-    }
-
+    if (cat) renderSection(cat, { updateUrl: false, clearSearch: false });
     if (query && searchInput) {
         searchInput.value = query;
         renderSearch(query, { updateUrl: false });
@@ -489,12 +447,11 @@ function init() {
         ['scrollFeatures', initScrollFeatures],
         ['routing', initRouting],
     ];
-
     initTasks.forEach(([name, task]) => {
         try {
             task();
         } catch (error) {
-            console.error(`[rectg] init failed: ${name}`, error);
+            console.error(`[tg_suoyin] init failed: ${name}`, error);
         }
     });
 }
