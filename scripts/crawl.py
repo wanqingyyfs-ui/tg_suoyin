@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Telegram 公开页面爬虫
-从 SQLite 的 links 表中获取链接，爬取公开信息，结果存入 entries 表。
+Telegram 公开页面爬虫。
 
-前置条件:
-    先运行 parse_links.py 将 README 中的链接导入 links 表。
+从 SQLite 的 links 表中获取链接，爬取公开信息，结果存入 entries 表。
+tg_suoyin 不做内容过滤；上游 tg_shaixuan 负责筛选，tg_suoyin 只负责采集公开元数据、分类和导出。
 
 用法:
-    python3 scripts/crawl.py              # 爬新链接，并刷新 30 天前的旧数据
-    python3 scripts/crawl.py --limit 10   # 只爬前 10 个（测试用）
-    python3 scripts/crawl.py --new        # 只爬新链接，不刷新旧数据
-    python3 scripts/crawl.py --older-than-days 7  # 刷新 7 天前的旧数据
-    python3 scripts/crawl.py --no-resume  # 清空 entries 表，从头开始
+    python3 scripts/crawl.py
+    python3 scripts/crawl.py --limit 10
+    python3 scripts/crawl.py --new
+    python3 scripts/crawl.py --older-than-days 7
+    python3 scripts/crawl.py --no-resume
 """
 from __future__ import annotations
 
@@ -30,25 +29,18 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
-from filter_rules import evaluate_entry
-
-# ---------------------------------------------------------------------------
-# 常量
-# ---------------------------------------------------------------------------
-
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 DB_PATH = DATA_DIR / "rectg.db"
 LOG_PATH = DATA_DIR / "crawl.log"
 
-# 限流配置（保守）
-MIN_DELAY = 3          # 每次请求最小间隔（秒）
-MAX_DELAY = 6          # 每次请求最大间隔（秒）
-BATCH_SIZE = 50        # 每批次条数
-BATCH_PAUSE = 60       # 批次间暂停（秒）
-RETRY_BASE = 60        # 429 退避基础等待（秒）
-RETRY_MAX = 300        # 429 最大等待（秒）
-MAX_RETRIES = 3        # 最大重试次数
+MIN_DELAY = 3
+MAX_DELAY = 6
+BATCH_SIZE = 50
+BATCH_PAUSE = 60
+RETRY_BASE = 60
+RETRY_MAX = 300
+MAX_RETRIES = 3
 
 HEADERS = {
     "User-Agent": (
@@ -59,29 +51,18 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-# ---------------------------------------------------------------------------
-# 日志配置
-# ---------------------------------------------------------------------------
 
 def setup_logging(log_path: Path) -> logging.Logger:
-    """配置日志：同时输出到控制台和文件。"""
     log_path.parent.mkdir(parents=True, exist_ok=True)
-
     logger = logging.getLogger("crawl")
     logger.setLevel(logging.DEBUG)
+    logger.handlers.clear()
 
-    # 控制台：简洁格式
     console = logging.StreamHandler(sys.stdout)
     console.setLevel(logging.INFO)
     console.setFormatter(logging.Formatter("%(message)s"))
-    # 强制 flush
-    console.stream = type('FlushStream', (), {
-        'write': lambda self, msg: (sys.stdout.write(msg), sys.stdout.flush()),
-        'flush': lambda self: sys.stdout.flush(),
-    })()
     logger.addHandler(console)
 
-    # 文件：详细格式，带时间戳
     file_handler = logging.FileHandler(str(log_path), encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter(
@@ -89,39 +70,31 @@ def setup_logging(log_path: Path) -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S",
     ))
     logger.addHandler(file_handler)
-
     return logger
 
 
 log = logging.getLogger("crawl")
 
 
-# ---------------------------------------------------------------------------
-# 进度追踪器
-# ---------------------------------------------------------------------------
-
 class ProgressTracker:
-    """追踪爬取进度并计算 ETA。"""
-
     def __init__(self, total: int):
         self.total = total
         self.done = 0
-        self.kept = 0
-        self.filtered = 0
+        self.saved = 0
+        self.invalid = 0
         self.start_time = time.time()
 
-    def tick(self, keep: bool):
+    def tick(self, valid: bool):
         self.done += 1
-        if keep:
-            self.kept += 1
+        if valid:
+            self.saved += 1
         else:
-            self.filtered += 1
+            self.invalid += 1
 
     def progress_str(self) -> str:
         elapsed = time.time() - self.start_time
         pct = self.done * 100 / self.total if self.total else 0
         remaining = self.total - self.done
-
         if self.done > 0:
             avg_time = elapsed / self.done
             eta_seconds = remaining * avg_time
@@ -130,13 +103,11 @@ class ProgressTracker:
             eta_str = f"{eta_min}m{eta_sec}s"
         else:
             eta_str = "计算中"
-
         elapsed_min = int(elapsed // 60)
         elapsed_sec = int(elapsed % 60)
-
         return (
             f"[{self.done}/{self.total}] {pct:.1f}% "
-            f"| ✅{self.kept} ❌{self.filtered} "
+            f"| 已记录 {self.saved} | 无效 {self.invalid} "
             f"| 耗时 {elapsed_min}m{elapsed_sec}s "
             f"| 预计剩余 {eta_str}"
         )
@@ -145,18 +116,10 @@ class ProgressTracker:
         elapsed = time.time() - self.start_time
         elapsed_min = int(elapsed // 60)
         elapsed_sec = int(elapsed % 60)
-        return (
-            f"总计: {self.done} | 保留: {self.kept} | 过滤: {self.filtered} "
-            f"| 总耗时: {elapsed_min}m{elapsed_sec}s"
-        )
+        return f"总计: {self.done} | 已记录: {self.saved} | 无效: {self.invalid} | 总耗时: {elapsed_min}m{elapsed_sec}s"
 
-
-# ---------------------------------------------------------------------------
-# SQLite 数据库
-# ---------------------------------------------------------------------------
 
 def init_db(db_path: Path) -> sqlite3.Connection:
-    """初始化数据库，创建 entries 表。"""
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("""
@@ -176,7 +139,7 @@ def init_db(db_path: Path) -> sqlite3.Connection:
             last_active     TEXT,
             valid           INTEGER DEFAULT 0,
             private         INTEGER DEFAULT 0,
-            keep            INTEGER DEFAULT 0,
+            keep            INTEGER DEFAULT 1,
             filter_reason   TEXT,
             created_at      TEXT NOT NULL,
             updated_at      TEXT NOT NULL
@@ -187,10 +150,10 @@ def init_db(db_path: Path) -> sqlite3.Connection:
 
 
 def upsert_entry(conn: sqlite3.Connection, data: dict):
-    """插入或更新一条 entries 记录。"""
     now = datetime.now().isoformat()
+    data["keep"] = 1
+    data["filter_reason"] = ""
 
-    # 先检查 url 是否已存在
     existing = conn.execute(
         "SELECT id, created_at FROM entries WHERE url = ?",
         (data["url"],),
@@ -217,7 +180,6 @@ def upsert_entry(conn: sqlite3.Connection, data: dict):
             WHERE url = :url
         """, data)
     else:
-        # 检查 username 是否已存在（不同 URL 指向同一频道，如 fakeye?boost 和 fakeye）
         if data.get("username"):
             dup = conn.execute(
                 "SELECT id, url FROM entries WHERE username = ?",
@@ -247,12 +209,7 @@ def upsert_entry(conn: sqlite3.Connection, data: dict):
     conn.commit()
 
 
-# ---------------------------------------------------------------------------
-# 爬取逻辑
-# ---------------------------------------------------------------------------
-
-def parse_subscriber_text(text: str) -> tuple:
-    """解析页面上的人气数据文本。"""
+def parse_subscriber_text(text: str) -> tuple[str | None, int | None]:
     text = text.strip()
     if not text:
         return None, None
@@ -275,8 +232,7 @@ def parse_subscriber_text(text: str) -> tuple:
     return None, None
 
 
-def crawl_page(session: requests.Session, url: str, username: str) -> dict:
-    """爬取单个 t.me 页面，提取公开信息。"""
+def crawl_page(session: requests.Session, url: str, username: str | None) -> dict:
     result = {
         "url": url,
         "username": username,
@@ -306,7 +262,6 @@ def crawl_page(session: requests.Session, url: str, username: str) -> dict:
     soup = BeautifulSoup(resp.text, "lxml")
     result["valid"] = 1
 
-    # 检查是否私密
     page_text = soup.get_text(separator=" ", strip=True).lower()
     private_keywords = [
         "this channel is private",
@@ -318,7 +273,6 @@ def crawl_page(session: requests.Session, url: str, username: str) -> dict:
         if not extra_div or not extra_div.get_text(strip=True):
             result["private"] = 1
 
-    # 提取 meta 信息
     og_title = soup.find("meta", property="og:title")
     if og_title:
         title = og_title.get("content", "").strip()
@@ -336,7 +290,6 @@ def crawl_page(session: requests.Session, url: str, username: str) -> dict:
         if avatar_url and "telegram.org/img/" not in avatar_url:
             result["avatar"] = avatar_url
 
-    # 提取人气数据
     if extra_div:
         extra_text = extra_div.get_text(strip=True)
         detected_type, count = parse_subscriber_text(extra_text)
@@ -348,7 +301,6 @@ def crawl_page(session: requests.Session, url: str, username: str) -> dict:
 
 
 def crawl_preview_page(session: requests.Session, username: str) -> dict:
-    """爬取频道 /s/ 预览页，获取最后活跃时间和 Telegram ID。"""
     info = {"last_active": None, "telegram_id": None}
     url = f"https://t.me/s/{username}"
     log.debug("  GET %s", url)
@@ -358,8 +310,6 @@ def crawl_preview_page(session: requests.Session, username: str) -> dict:
         return info
 
     soup = BeautifulSoup(resp.text, "lxml")
-
-    # 提取 Telegram ID
     data_view_el = soup.find(attrs={"data-view": True})
     if data_view_el:
         try:
@@ -375,7 +325,6 @@ def crawl_preview_page(session: requests.Session, username: str) -> dict:
         except Exception as e:
             log.debug("  解析 telegram_id 失败: %s", e)
 
-    # 提取最后活跃时间
     date_elements = soup.find_all(attrs={"datetime": True})
     if date_elements:
         dates = [d["datetime"] for d in date_elements]
@@ -384,25 +333,19 @@ def crawl_preview_page(session: requests.Session, username: str) -> dict:
             info["last_active"] = dates[-1]
     else:
         time_elements = soup.find_all("time")
-        if time_elements:
-            dates = [t.get("datetime") for t in time_elements if t.get("datetime")]
-            if dates:
-                dates.sort()
-                info["last_active"] = dates[-1]
+        dates = [t.get("datetime") for t in time_elements if t.get("datetime")]
+        if dates:
+            dates.sort()
+            info["last_active"] = dates[-1]
 
     return info
 
-
-# ---------------------------------------------------------------------------
-# HTTP 请求
-# ---------------------------------------------------------------------------
 
 def _request_with_retry(
     session: requests.Session,
     url: str,
     max_retries: int = MAX_RETRIES,
 ):
-    """带指数退避的 HTTP GET 请求。"""
     for attempt in range(max_retries):
         try:
             resp = session.get(url, headers=HEADERS, timeout=15)
@@ -427,15 +370,6 @@ def _request_with_retry(
     return None
 
 
-def should_keep(entry: dict) -> tuple:
-    """判断条目是否应该保留。返回 (keep, reason)。"""
-    return evaluate_entry(entry)
-
-
-# ---------------------------------------------------------------------------
-# 主流程
-# ---------------------------------------------------------------------------
-
 def main():
     global log
 
@@ -447,7 +381,6 @@ def main():
     parser.add_argument("--older-than-days", type=int, default=30, help="默认刷新多少天前的旧 entries（默认 30）")
     args = parser.parse_args()
 
-    # 初始化日志
     log = setup_logging(LOG_PATH)
 
     log.info("=" * 60)
@@ -463,13 +396,11 @@ def main():
 
     conn = init_db(DB_PATH)
 
-    # 清空模式
     if args.no_resume:
         conn.execute("DELETE FROM entries")
         conn.commit()
         log.info("🗑️  已清空 entries 表")
 
-    # 1. 从 links 表获取待爬链接
     if args.no_resume:
         links = conn.execute("""
             SELECT url, username, name, type_hint FROM links ORDER BY id
@@ -518,7 +449,6 @@ def main():
         links = links[:args.limit]
         log.info("   限制爬取:   前 %d 个", args.limit)
 
-    # 2. 开始爬取
     session = requests.Session()
     request_count = 0
     total = len(links)
@@ -536,16 +466,13 @@ def main():
         log.info("[%d/%d] 🔍 %s", i + 1, total, link["name"])
         log.info("       %s", url)
 
-        # 爬取主页
         result = crawl_page(session, url, username)
         request_count += 1
 
-        # 如果爬取未识别类型，用 links 表的 type_hint 推断
         if result["type"] is None and link.get("type_hint"):
             result["type"] = link["type_hint"]
             log.debug("  类型由 type_hint 推断: %s", link["type_hint"])
 
-        # 爬取 /s/ 页面（仅有效频道）
         if (
             not args.no_active
             and result.get("valid")
@@ -560,22 +487,14 @@ def main():
                 result["telegram_id"] = preview["telegram_id"]
             request_count += 1
 
-        # 过滤判断
-        keep, reason = should_keep(result)
-        result["keep"] = 1 if keep else 0
-        result["filter_reason"] = reason
+        result["keep"] = 1
+        result["filter_reason"] = ""
 
-        # 日志输出
         if result.get("valid"):
             type_label = {"channel": "频道", "group": "群组", "bot": "机器人"}.get(result.get("type"), "未知")
             count_val = result.get("count")
             count_str = f"{count_val:,}" if count_val is not None else "-"
-
-            if keep:
-                log.info("       ✅ 保留 | %s | %s", type_label, count_str)
-            else:
-                log.info("       ❌ 过滤 | %s | %s | %s", type_label, count_str, reason)
-
+            log.info("       ✅ 记录 | %s | %s", type_label, count_str)
             if result.get("telegram_id"):
                 log.debug("       🆔 ID: %s", result["telegram_id"])
             if result.get("last_active"):
@@ -583,44 +502,31 @@ def main():
         else:
             log.info("       ❌ 无效链接")
 
-        # 更新进度
-        tracker.tick(keep)
-
-        # 写入数据库
+        tracker.tick(bool(result.get("valid")))
         upsert_entry(conn, result)
 
-        # 每 10 条打印一次进度摘要
         if (i + 1) % 10 == 0:
             log.info("")
             log.info("📈 %s", tracker.progress_str())
 
-        # 限流
         _random_delay()
 
-        # 批次暂停
         if request_count > 0 and request_count % BATCH_SIZE == 0:
             log.info("")
             log.info("⏸️  已爬 %d 次请求，暂停 %ds...", request_count, BATCH_PAUSE)
             time.sleep(BATCH_PAUSE)
             log.info("▶️  继续爬取...")
 
-    # 3. 打印统计
     stats = conn.execute("""
         SELECT
             COUNT(*) as total,
-            SUM(keep) as kept,
-            SUM(CASE WHEN keep = 0 THEN 1 ELSE 0 END) as filtered,
-            SUM(CASE WHEN type = 'channel' AND keep = 1 THEN 1 ELSE 0 END) as channels,
-            SUM(CASE WHEN type = 'group' AND keep = 1 THEN 1 ELSE 0 END) as groups,
-            SUM(CASE WHEN type = 'bot' AND keep = 1 THEN 1 ELSE 0 END) as bots
+            SUM(CASE WHEN valid = 1 THEN 1 ELSE 0 END) as valid_count,
+            SUM(CASE WHEN valid = 0 THEN 1 ELSE 0 END) as invalid_count,
+            SUM(CASE WHEN type = 'channel' AND valid = 1 THEN 1 ELSE 0 END) as channels,
+            SUM(CASE WHEN type = 'group' AND valid = 1 THEN 1 ELSE 0 END) as groups,
+            SUM(CASE WHEN type = 'bot' AND valid = 1 THEN 1 ELSE 0 END) as bots
         FROM entries
     """).fetchone()
-
-    filter_reasons = conn.execute("""
-        SELECT filter_reason, COUNT(*) as cnt
-        FROM entries WHERE keep = 0 AND filter_reason IS NOT NULL
-        GROUP BY filter_reason ORDER BY cnt DESC
-    """).fetchall()
 
     conn.close()
 
@@ -632,18 +538,11 @@ def main():
     log.info("")
     log.info("  数据库 entries 表:")
     log.info("    总条目:    %s", stats['total'])
-    log.info("    保留:      %s", stats['kept'])
-    log.info("    过滤:      %s", stats['filtered'])
+    log.info("    有效:      %s", stats['valid_count'])
+    log.info("    无效:      %s", stats['invalid_count'])
     log.info("    ├ 频道:    %s", stats['channels'])
     log.info("    ├ 群组:    %s", stats['groups'])
     log.info("    └ 机器人:  %s", stats['bots'])
-
-    if filter_reasons:
-        log.info("")
-        log.info("  过滤原因:")
-        for row in filter_reasons:
-            log.info("    ❌ %s: %s", row['filter_reason'], row['cnt'])
-
     log.info("")
     log.info("  日志: %s", LOG_PATH)
     log.info("  数据库: %s", DB_PATH)
