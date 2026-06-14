@@ -38,14 +38,7 @@ https://github.com/wanqingyyfs-ui/tg_suoyin
 - 🤖 机器人服务
 - 🧭 综合导航
 
-说明：tg_shaixuan 负责前置筛选链接；tg_suoyin 负责对已接受的公开 Telegram 资源进行分类、清洗、搜索和展示。成人、博彩、灰产是正常分类方向，不再作为通用行业词直接过滤。
-
-当前过滤阈值：
-
-- 频道最低订阅数：1000
-- 群组最低成员数：200
-- 频道不活跃阈值：90 天
-- 繁体中文过滤阈值：0.10
+说明：tg_shaixuan 负责前置筛选链接；tg_suoyin 只负责对已接受的公开 Telegram 资源进行抓取、分类、清洗、搜索和展示。tg_suoyin 不按内容行业做过滤，不再因为成人、博彩、灰产、政治、宗教等通用词删除或隐藏资源。
 
 当前数据规模以最新生成的 web/public/data.json 为准。
 
@@ -53,9 +46,9 @@ https://github.com/wanqingyyfs-ui/tg_suoyin
 
 data/rectg.db -> scripts/categorize.py -> scripts/export_frontend_data.py -> web/public/data.json、web/public/sitemap.xml、web/public/robots.txt -> Astro build -> Vercel 静态部署。
 
-配套采集器项目数据链路：
+配套筛选器项目数据链路：
 
-tg_suoyin_collector/exports/tg_suoyin_links.jsonl -> scripts/import_collected_links.py -> links 表 -> scripts/crawl.py --new -> entries 表 -> npm run rebuild。
+tg_shaixuan 导出文件 -> scripts/import_collected_links.py -> links 表 -> scripts/crawl.py --new -> entries 表 -> npm run rebuild。
 
 ## 常用命令
 
@@ -64,7 +57,7 @@ tg_suoyin_collector/exports/tg_suoyin_links.jsonl -> scripts/import_collected_li
 python -m pip install -r requirements.txt
 npm install
 
-重新清洗、分类和过滤：
+重新清洗和分类：
 
 python scripts/categorize.py
 
@@ -80,12 +73,12 @@ npm run rebuild
 
 npm run build
 
-从采集器导入候选链接：
+从筛选器导入候选链接：
 
-python scripts/import_collected_links.py --file ../tg_suoyin_collector/exports/tg_suoyin_links.jsonl
-npm run import-collected -- --file ../tg_suoyin_collector/exports/tg_suoyin_links.jsonl
+python scripts/import_collected_links.py --file ../tg_shaixuan/exports/tg_suoyin_links.jsonl
+npm run import-collected -- --file ../tg_shaixuan/exports/tg_suoyin_links.jsonl
 
-导入采集器数据后的推荐流程：
+导入筛选器数据后的推荐流程：
 
 python scripts/crawl.py --new
 npm run rebuild
@@ -101,10 +94,10 @@ python scripts/search_entries.py 网盘 --format json
 
 - data/rectg.db：主数据库
 - scripts/categories.py：分类顺序、默认分类和历史分类归并规则
-- scripts/categorize.py：清洗、过滤和 24 大类分类
-- scripts/filter_rules.py：基础过滤规则
+- scripts/categorize.py：文本清洗和 24 大类分类
+- scripts/filter_rules.py：旧脚本兼容空壳，不再执行内容过滤
 - scripts/export_frontend_data.py：导出前端数据、站点地图和 robots.txt
-- scripts/import_collected_links.py：导入 tg_suoyin_collector 审核通过的候选链接
+- scripts/import_collected_links.py：导入 tg_shaixuan 审核通过的候选链接
 - scripts/search_entries.py：命令行搜索工具
 - scripts/manage_ads.py：广告位管理
 - web/src：Astro 前端源码
@@ -119,5 +112,6 @@ python scripts/search_entries.py 网盘 --format json
 4. 不写死 https://www.rectg.com。
 5. 分类常量统一由 scripts/categories.py 管理。
 6. 部署前必须确认 data.json 和 sitemap.xml 已由最新数据库重新生成。
-7. 采集器只导入 links 表，最终展示仍必须经过 crawl、filter、categorize、export 流程。
-8. 新增分类时必须同步更新 scripts/categories.py、scripts/categorize.py、scripts/export_frontend_data.py。
+7. tg_suoyin 只做抓取、分类、搜索、展示，不做内容行业过滤。
+8. tg_shaixuan 负责筛选、淘汰和审核；它输出给 tg_suoyin 的链接默认是可接受资源。
+9. 新增分类时必须同步更新 scripts/categories.py、scripts/categorize.py、scripts/export_frontend_data.py。
