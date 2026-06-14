@@ -32,7 +32,7 @@ SEO_KEYWORDS = {
     "商业职场": "招聘 求职 创业 运营 职场 远程工作 自由职业 副业 项目合作",
     "财经投资": "财经 股票 基金 理财 宏观经济 房产投资 外汇 投资研究",
     "加密Web3": "加密货币 区块链 比特币 以太坊 Web3 NFT DeFi 交易所 钱包",
-    "博彩资源": "博彩 彩票 赌场 体育竞猜 棋牌 บาคาร่า 盘口 赔率 投注",
+    "博彩资源": "博彩 彩票 赌场 体育竞猜 棋牌 盘口 赔率 投注",
     "成人资源": "成人 色情 福利 写真 番号 擦边 NSFW R18 成人社群",
     "灰产资源": "灰产 接码 养号 账号资源 引流 矩阵 私域 流量变现 渠道",
     "军事安全": "军事 国防 武器 装备 战争 地缘冲突 军迷 战报 安全局势",
@@ -158,8 +158,7 @@ def main():
         """
         SELECT title, username, url, type, count, clean_desc, description, category
         FROM entries
-        WHERE keep = 1
-          AND valid = 1
+        WHERE valid = 1
           AND private = 0
         ORDER BY
             CASE type
