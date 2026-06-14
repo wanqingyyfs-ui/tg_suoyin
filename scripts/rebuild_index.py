@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from categories import CATEGORY_ORDER, normalize_category
+from categories import CATEGORY_ORDER, FORCED_CATEGORY_REPLACEMENTS, normalize_entry_category
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT_DIR / "data" / "rectg.db"
@@ -15,11 +15,6 @@ CATEGORIZE_SCRIPT = ROOT_DIR / "scripts" / "categorize.py"
 EXPORT_SCRIPT = ROOT_DIR / "scripts" / "export_frontend_data.py"
 
 EXPECTED_CATEGORY_SET = set(CATEGORY_ORDER)
-FORCED_CATEGORY_REPLACEMENTS = {
-    "🪙 加密货币": "💎 加密货币",
-    "💰 加密货币": "💎 加密货币",
-    "🤖 机器人": "🧭 综合导航",
-}
 
 
 def run_script(script: Path) -> None:
@@ -34,17 +29,10 @@ def run_script(script: Path) -> None:
         raise SystemExit(f"❌ 脚本执行失败：{script}")
 
 
-def normalize_one_category(category: str | None) -> str:
-    value = (category or "").strip()
-    if not value:
-        return "🧭 综合导航"
-    if value in FORCED_CATEGORY_REPLACEMENTS:
-        return FORCED_CATEGORY_REPLACEMENTS[value]
-    normalized = normalize_category(value) or "🧭 综合导航"
-    if normalized in FORCED_CATEGORY_REPLACEMENTS:
-        normalized = FORCED_CATEGORY_REPLACEMENTS[normalized]
+def normalize_one_category(category: str | None, entry_type: str | None = None) -> str:
+    normalized = normalize_entry_category(category, entry_type)
     if normalized not in EXPECTED_CATEGORY_SET:
-        normalized = "🧭 综合导航"
+        return "🧭 综合导航"
     return normalized
 
 
@@ -65,7 +53,7 @@ def normalize_existing_categories() -> None:
         forced_changed += cur.rowcount if cur.rowcount is not None else 0
 
     rows = conn.execute(
-        "SELECT id, category FROM entries WHERE category IS NULL OR TRIM(category) = '' OR category NOT IN ({})".format(
+        "SELECT id, category, type FROM entries WHERE category IS NULL OR TRIM(category) = '' OR category NOT IN ({})".format(
             ",".join("?" for _ in CATEGORY_ORDER)
         ),
         CATEGORY_ORDER,
@@ -74,7 +62,7 @@ def normalize_existing_categories() -> None:
     normalized_changed = 0
     for row in rows:
         old_category = row["category"] or ""
-        new_category = normalize_one_category(old_category)
+        new_category = normalize_one_category(old_category, row["type"])
         if new_category != old_category:
             conn.execute(
                 "UPDATE entries SET category=?, updated_at=datetime('now') WHERE id=?",
@@ -82,7 +70,7 @@ def normalize_existing_categories() -> None:
             )
             normalized_changed += 1
 
-    # 第二层：再跑一次兜底，保证所有分类只属于当前 8 大类。
+    # 第二层：再跑一次兜底，保证所有分类只属于当前大类。
     allowed_placeholders = ",".join("?" for _ in CATEGORY_ORDER)
     cur = conn.execute(
         f"UPDATE entries SET category='🧭 综合导航', updated_at=datetime('now') WHERE category NOT IN ({allowed_placeholders}) OR category IS NULL OR TRIM(category)=''",
@@ -90,7 +78,7 @@ def normalize_existing_categories() -> None:
     )
     fallback_changed = cur.rowcount if cur.rowcount is not None else 0
 
-    # 清理后台分类表，只保留当前 8 大类。
+    # 清理后台分类表，只保留当前大类。
     try:
         conn.execute("DELETE FROM categories")
         for index, category in enumerate(CATEGORY_ORDER):
@@ -115,25 +103,31 @@ def normalize_existing_categories() -> None:
         ORDER BY count DESC
         """
     ).fetchall()
-    old_rows = conn.execute(
-        """
-        SELECT category, COUNT(*) AS count
-        FROM entries
-        WHERE category IN ('🪙 加密货币', '💰 加密货币', '🤖 机器人')
-        GROUP BY category
-        """
-    ).fetchall()
+
+    stale_categories = tuple(FORCED_CATEGORY_REPLACEMENTS.keys())
+    old_rows = []
+    if stale_categories:
+        placeholders = ",".join("?" for _ in stale_categories)
+        old_rows = conn.execute(
+            f"""
+            SELECT category, COUNT(*) AS count
+            FROM entries
+            WHERE category IN ({placeholders})
+            GROUP BY category
+            """,
+            stale_categories,
+        ).fetchall()
     conn.close()
 
     print(f"✅ 强制替换旧分类：{forced_changed} 条")
     print(f"✅ 归一化非标准分类：{normalized_changed} 条")
-    print(f"✅ 兜底清理非 8 大类分类：{fallback_changed} 条")
+    print(f"✅ 兜底清理非当前大类分类：{fallback_changed} 条")
     if old_rows:
         print("❌ 仍发现旧分类，请检查数据库写入权限：")
         for row in old_rows:
             print(f"  {row['category']}：{row['count']} 条")
     else:
-        print("✅ 已确认数据库中不存在 🪙 加密货币 / 🤖 机器人 旧分类。")
+        print("✅ 已确认数据库中不存在历史分类残留。")
 
     print("\n📊 当前可见资源大类统计：")
     for row in stats:
