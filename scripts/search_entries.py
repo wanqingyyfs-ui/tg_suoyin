@@ -58,7 +58,6 @@ def row_to_item(row: sqlite3.Row) -> dict[str, Any]:
         "description": row["description"] or "",
         "clean_desc": row["clean_desc"] or "",
         "category": row["category"] or "",
-        "keep": int(row["keep"] or 0),
         "valid": int(row["valid"] or 0),
         "private": int(row["private"] or 0),
         "created_at": row["created_at"] or "",
@@ -69,9 +68,9 @@ def row_to_item(row: sqlite3.Row) -> dict[str, Any]:
     return item
 
 
-def build_relevance_order(keyword: str) -> tuple[str, list[Any]]:
+def build_relevance_order(keyword: str) -> tuple[str, list[Any], str]:
     if not keyword:
-        return "COALESCE(count, 0) DESC, title COLLATE NOCASE, id DESC", []
+        return "0 AS score", [], "COALESCE(count, 0) DESC, title COLLATE NOCASE, id DESC"
 
     exact = keyword
     prefix = f"{keyword}%"
@@ -100,7 +99,7 @@ def search_entries(
 ) -> dict[str, Any]:
     """搜索公开可见的 TG 索引条目。
 
-    返回统一字典结构，供命令行、后台管理页和 Telegram Bot 共用。
+    tg_suoyin 不按内容或行业过滤；只搜索已经成功抓取且公开可见的资源。
     """
     keyword = (keyword or "").strip()
     entry_type = normalize_type(entry_type)
@@ -110,7 +109,7 @@ def search_entries(
     safe_page = max(1, int(page or 1))
     offset = (safe_page - 1) * safe_limit
 
-    where = ["keep = 1", "valid = 1", "private = 0"]
+    where = ["valid = 1", "private = 0"]
     params: list[Any] = []
 
     if keyword:
@@ -154,7 +153,7 @@ def search_entries(
             SELECT
                 id, title, clean_title, username, url, type, count,
                 clean_desc, description, category,
-                keep, valid, private, created_at, updated_at,
+                valid, private, created_at, updated_at,
                 {select_score}
             FROM entries
             WHERE {where_sql}
@@ -222,7 +221,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="搜索 TG 索引数据库")
     parser.add_argument("keyword", nargs="?", default="", help="搜索关键词，不填则列出全部可见资源")
     parser.add_argument("--type", choices=TYPE_CHOICES, default=None, help="资源类型：channel/group/bot")
-    parser.add_argument("--category", default=None, help="分类名，例如：💻 科技开发")
+    parser.add_argument("--category", default=None, help="分类名，例如：💻 科技AI")
     parser.add_argument("--limit", type=int, default=20, help="每页数量，最大 100")
     parser.add_argument("--page", type=int, default=1, help="页码")
     parser.add_argument("--sort", choices=("relevance", "latest"), default="relevance", help="排序方式")
