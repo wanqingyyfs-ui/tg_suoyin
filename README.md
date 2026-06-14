@@ -11,13 +11,18 @@ https://github.com/wanqingyyfs-ui/tg_suoyin
 
 项目当前使用 SQLite 作为长期维护源，不再把 README 当作主数据源。
 
-当前前端导出结果为 5 个一级分类：
+当前前端导出结果为 8 个一级大类：
 
-- 📰 资讯内容
-- 💻 技术资源
+- 📰 新闻资讯
+- 💻 科技开发
+- 🧰 软件工具
 - 🎬 影音娱乐
+- 📚 学习阅读
 - 👥 生活社群
-- 🧭 工具导航
+- 💎 加密货币
+- 🧭 综合导航
+
+说明：机器人是资源类型，不作为独立内容分类；历史“🤖 机器人”分类统一归入“🧰 软件工具”。
 
 当前过滤阈值：
 
@@ -75,8 +80,8 @@ python scripts/search_entries.py 网盘 --format json
 ## 主要文件
 
 - data/rectg.db：主数据库
-- scripts/categories.py：分类顺序和 5 大类映射
-- scripts/categorize.py：清洗、过滤和细分类
+- scripts/categories.py：分类顺序、默认分类和历史分类归并规则
+- scripts/categorize.py：清洗、过滤和大类分类
 - scripts/filter_rules.py：过滤规则
 - scripts/export_frontend_data.py：导出前端数据、站点地图和 robots.txt
 - scripts/import_collected_links.py：导入 tg_suoyin_collector 审核通过的候选链接
