@@ -5,7 +5,7 @@ import re
 import sqlite3
 import xml.sax.saxutils as xml_escape
 
-from categories import CATEGORY_ORDER, get_top_category, normalize_category, top_category_sort_key
+from categories import CATEGORY_ORDER, get_top_category, normalize_entry_category, top_category_sort_key
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "rectg.db"
@@ -22,12 +22,6 @@ TYPE_LABELS = {
     "bot": "机器人",
 }
 
-DEFAULT_CATEGORY = {
-    "channel": "🧭 综合导航",
-    "group": "👥 生活社群",
-    "bot": "🧰 软件工具",
-}
-
 SEO_KEYWORDS = {
     "新闻资讯": "新闻 快讯 资讯 媒体 财经 体育 社媒 热点",
     "科技开发": "科技 数码 开发 编程 GitHub Python Linux Docker AI",
@@ -40,23 +34,13 @@ SEO_KEYWORDS = {
 }
 
 EXPECTED_CATEGORY_SET = set(CATEGORY_ORDER)
-FORCED_CATEGORY_REPLACEMENTS = {
-    "🪙 加密货币": "💎 加密货币",
-    "💰 加密货币": "💎 加密货币",
-    "🤖 机器人": "🧭 综合导航",
-}
 
 
 def normalize_export_category(category: str | None, entry_type: str) -> str:
-    value = (category or "").strip()
-    if value in FORCED_CATEGORY_REPLACEMENTS:
-        return FORCED_CATEGORY_REPLACEMENTS[value]
-    normalized = normalize_category(value)
-    if normalized in FORCED_CATEGORY_REPLACEMENTS:
-        normalized = FORCED_CATEGORY_REPLACEMENTS[normalized]
+    normalized = normalize_entry_category(category, entry_type)
     if normalized in EXPECTED_CATEGORY_SET:
         return normalized
-    return DEFAULT_CATEGORY.get(entry_type, "🧭 综合导航")
+    return normalize_entry_category(None, entry_type)
 
 
 def make_id(username, url, title):
