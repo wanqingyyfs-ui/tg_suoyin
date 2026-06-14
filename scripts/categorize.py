@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clean, filter and assign accurate broad categories for TG 索引 entries."""
+"""Clean text and assign broad categories for TG 索引 entries."""
 from __future__ import annotations
 
 import re
@@ -9,12 +9,11 @@ from pathlib import Path
 import emoji
 
 from categories import CATEGORY_ORDER, normalize_category
-from filter_rules import evaluate_entry
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "rectg.db"
 
 # 分类原则：一级大类覆盖面要宽，标题和 username 权重大于简介，短英文词必须边界匹配。
-# 成人、博彩、灰产、地区、机器人等强业务属性优先识别，避免被“娱乐/生活/工具”抢走。
+# 成人、博彩、灰产、地区、机器人等强业务属性优先识别，但群规/禁止语境不参与分类打分。
 CATEGORY_RULES = {
     "📰 新闻政经": {
         "strong": ["新闻", "快讯", "日报", "早报", "晚报", "时报", "周报", "简报", "媒体", "报道", "政经", "时政", "时事"],
@@ -72,21 +71,21 @@ CATEGORY_RULES = {
     },
     "🎲 博彩资源": {
         "strong": ["博彩", "赌博", "赌场", "彩票", "体育投注", "棋牌", "百家乐", "六合彩", "娱乐城", "真人娱乐"],
-        "normal": ["盘口", "赔率", "下注", "投注", "电竞竞猜", "体育竞猜", "菠菜", "娱乐城", "六合彩", "真人", "棋牌娱乐", "娱乐城", "返水"],
-        "weak": ["开奖", "计划", "跟单", "代理", "会员", "娱乐城"],
-        "negative": ["新闻", "学习", "电影", "编程"],
+        "normal": ["盘口", "赔率", "下注", "投注", "电竞竞猜", "体育竞猜", "菠菜", "真人", "棋牌娱乐", "返水"],
+        "weak": ["开奖", "计划", "跟单", "代理", "会员"],
+        "negative": ["新闻", "学习", "电影", "编程", "禁止", "群规", "封禁", "黄赌毒"],
     },
     "🔞 成人资源": {
         "strong": ["成人", "色情", "福利", "写真", "女优", "番号", "成人视频", "成人资源", "擦边", "私房", "r18", "18+"],
         "normal": ["nsfw", "里番", "h动漫", "国产自拍", "福利姬", "裸聊", "约会", "情趣", "制服", "丝袜", "白丝", "黑丝", "性感", "绅士", "开车"],
         "weak": ["养眼", "小姐姐", "美图", "福利视频", "福利群", "资源群"],
-        "negative": ["新闻", "学习", "编程", "招聘"],
+        "negative": ["新闻", "学习", "编程", "招聘", "禁止", "群规", "封禁"],
     },
     "🩶 灰产资源": {
         "strong": ["灰产", "接码", "养号", "账号资源", "引流", "矩阵", "私域", "流量变现", "卡商", "号商"],
         "normal": ["注册", "账号", "流量", "项目", "渠道", "短信", "代实名", "实名", "拉新", "获客", "变现", "信息差", "工作室", "资源对接"],
         "weak": ["玩法", "项目资源", "渠道资源", "粉丝", "推广资源", "业务交流"],
-        "negative": ["电影", "音乐", "课程", "新闻"],
+        "negative": ["电影", "音乐", "课程", "新闻", "禁止", "群规", "封禁"],
     },
     "🛡️ 军事安全": {
         "strong": ["军事", "军迷", "国防", "武器", "装备", "战争", "战报", "地缘冲突", "安全局势"],
@@ -170,6 +169,16 @@ CATEGORY_PRIORITY_BOOST = {
     "🤖 机器人服务": 7,
 }
 
+RULE_CONTEXT_RE = re.compile(
+    r"(群规|规则|禁止|严禁|不得|不准|请勿|请不要|不要|封禁|删除\+?警告|警告|违者|只允许|不允许|包含并不仅限)"
+    r"[^。！？\n\r]{0,500}?"
+    r"(博彩|赌博|赌毒|黄赌毒|宗教|政治|键政|黑产|灰产|违法色情|色情|成人|nsfw|r18|18\+|机场|aff|隐私|广告|撕逼|谩骂|人身攻击|刷屏|谣言|盗版)"
+    r"[^。！？\n\r]{0,500}",
+    re.IGNORECASE,
+)
+RULE_MARKER_RE = re.compile(r"(群规|规则|禁止|严禁|不得|不准|请勿|请不要|不要|封禁|删除\+?警告|警告|违者|只允许|不允许|包含并不仅限)", re.IGNORECASE)
+RULE_TARGET_RE = re.compile(r"(博彩|赌博|赌毒|黄赌毒|宗教|政治|键政|黑产|灰产|违法色情|色情|成人|nsfw|r18|18\+|机场|aff|隐私|广告|撕逼|谩骂|人身攻击|刷屏|谣言|盗版)", re.IGNORECASE)
+
 SPAM_PATTERNS = [
     r"点击链接", r"加入群组", r"关注我们", r"欢迎来到", r"本群规", r"进群请", r"商务合作", r"广告投放",
     r"联系群主", r"联系管理", r"投稿请联系", r"交流群", r"聊天群", r"备用频道", r"官方频道", r"最新地址",
@@ -182,8 +191,21 @@ def remove_emoji(text: str) -> str:
     return emoji.replace_emoji(text or "", replace="")
 
 
+def strip_rule_contexts(text: str) -> str:
+    value = text or ""
+    value = RULE_CONTEXT_RE.sub(" ", value)
+    parts = re.split(r"([。！？；;\n\r|｜*•]+)", value)
+    kept: list[str] = []
+    for part in parts:
+        if RULE_MARKER_RE.search(part) and RULE_TARGET_RE.search(part):
+            kept.append(" ")
+        else:
+            kept.append(part)
+    return "".join(kept)
+
+
 def normalize_text_for_match(text: str) -> str:
-    value = remove_emoji(text or "").lower()
+    value = strip_rule_contexts(remove_emoji(text or "")).lower()
     value = re.sub(r"https?://[^\s]+", " ", value)
     value = re.sub(r"t\.me/[^\s]+", " ", value)
     value = re.sub(r"@\w+", " ", value)
@@ -275,7 +297,6 @@ def determine_category(
     best_score, best_category = scores[0]
     second_score = scores[1][0] if len(scores) > 1 else 0
 
-    # 低置信度或强烈冲突时，不乱分，回到综合导航。
     if best_score < 10:
         return "🧭 综合导航"
     if best_score < 22 and best_score - second_score <= 3:
@@ -284,14 +305,13 @@ def determine_category(
 
 
 def main() -> None:
-    print("🧹 开始执行高准确率清洗、过滤与 24 大类重整...")
+    print("🧹 开始执行文本清洗与 24 大类重整...")
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
-    rows = conn.execute("SELECT * FROM entries WHERE keep=1").fetchall()
-    print(f"处理保留的 {len(rows)} 条记录...")
+    rows = conn.execute("SELECT * FROM entries WHERE valid=1 AND private=0").fetchall()
+    print(f"处理可分类记录 {len(rows)} 条...")
 
     changed = 0
-    filtered = 0
     cat_counts: dict[str, int] = {}
 
     for row in rows:
@@ -299,22 +319,16 @@ def main() -> None:
         title = entry.get("title") or ""
         desc = entry.get("description") or ""
         username = entry.get("username") or ""
-        keep, filter_reason = evaluate_entry(entry)
-        if not keep:
-            conn.execute(
-                "UPDATE entries SET keep=0, filter_reason=?, updated_at=datetime('now') WHERE id=?",
-                (filter_reason, entry["id"]),
-            )
-            changed += 1
-            filtered += 1
-            print(f"  ❌ 过滤 ({filter_reason}): {title}")
-            continue
 
         c_title = clean_title(title) or title
         c_desc = clean_text(desc, title) or "暂无详细简介。"
         category = normalize_category(determine_category(title, desc, entry.get("type"), username)) or "🧭 综合导航"
         conn.execute(
-            "UPDATE entries SET clean_title=?, clean_desc=?, category=?, updated_at=datetime('now') WHERE id=?",
+            """
+            UPDATE entries
+            SET clean_title=?, clean_desc=?, category=?, keep=1, filter_reason='', updated_at=datetime('now')
+            WHERE id=?
+            """,
             (c_title, c_desc, category, entry["id"]),
         )
         changed += 1
@@ -323,7 +337,7 @@ def main() -> None:
     conn.commit()
     conn.close()
 
-    print(f"✅ 处理完成，共重新分类和清洗 {changed} 条记录，过滤 {filtered} 条。")
+    print(f"✅ 处理完成，共重新分类和清洗 {changed} 条记录。")
     print("\n📊 大类统计：")
     for cat, count in sorted(cat_counts.items(), key=lambda x: x[1], reverse=True):
         print(f"  {cat}: {count} 条")
