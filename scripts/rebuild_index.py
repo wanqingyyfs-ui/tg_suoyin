@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""一键重整 TG 索引数据库并重新导出前端数据。"""
+"""一键重整 TG 索引数据库分类并重新导出前端数据。"""
 from __future__ import annotations
 
 import sqlite3
@@ -18,7 +18,6 @@ EXPECTED_CATEGORY_SET = set(CATEGORY_ORDER)
 
 
 def run_script(script: Path) -> None:
-    """运行子脚本，直接继承当前终端输出，避免 Windows 编码解码失败。"""
     print(f"\n▶ 执行：{script.relative_to(ROOT_DIR)}", flush=True)
     completed = subprocess.run(
         [sys.executable, str(script)],
@@ -43,17 +42,16 @@ def normalize_existing_categories() -> None:
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
 
-    # 第一层：硬替换旧值，避免任何旧脚本/旧数据残留。
     forced_changed = 0
     for old_category, new_category in FORCED_CATEGORY_REPLACEMENTS.items():
         cur = conn.execute(
-            "UPDATE entries SET category=?, updated_at=datetime('now') WHERE category=?",
+            "UPDATE entries SET category=?, keep=1, filter_reason='', updated_at=datetime('now') WHERE category=?",
             (new_category, old_category),
         )
         forced_changed += cur.rowcount if cur.rowcount is not None else 0
 
     rows = conn.execute(
-        "SELECT id, category, type FROM entries WHERE category IS NULL OR TRIM(category) = '' OR category NOT IN ({})".format(
+        "SELECT id, category, type FROM entries WHERE valid=1 AND private=0 AND (category IS NULL OR TRIM(category) = '' OR category NOT IN ({}))".format(
             ",".join("?" for _ in CATEGORY_ORDER)
         ),
         CATEGORY_ORDER,
@@ -65,20 +63,23 @@ def normalize_existing_categories() -> None:
         new_category = normalize_one_category(old_category, row["type"])
         if new_category != old_category:
             conn.execute(
-                "UPDATE entries SET category=?, updated_at=datetime('now') WHERE id=?",
+                "UPDATE entries SET category=?, keep=1, filter_reason='', updated_at=datetime('now') WHERE id=?",
                 (new_category, row["id"]),
             )
             normalized_changed += 1
 
-    # 第二层：再跑一次兜底，保证所有分类只属于当前大类。
     allowed_placeholders = ",".join("?" for _ in CATEGORY_ORDER)
     cur = conn.execute(
-        f"UPDATE entries SET category='🧭 综合导航', updated_at=datetime('now') WHERE category NOT IN ({allowed_placeholders}) OR category IS NULL OR TRIM(category)=''",
+        f"UPDATE entries SET category='🧭 综合导航', keep=1, filter_reason='', updated_at=datetime('now') WHERE valid=1 AND private=0 AND (category NOT IN ({allowed_placeholders}) OR category IS NULL OR TRIM(category)='')",
         CATEGORY_ORDER,
     )
     fallback_changed = cur.rowcount if cur.rowcount is not None else 0
 
-    # 清理后台分类表，只保留当前大类。
+    # 旧数据库可能保留 keep=0 / filter_reason，分类重整时统一恢复为可展示状态。
+    restored = conn.execute(
+        "UPDATE entries SET keep=1, filter_reason='' WHERE valid=1 AND private=0 AND (keep IS NULL OR keep != 1 OR filter_reason IS NOT NULL)",
+    ).rowcount
+
     try:
         conn.execute("DELETE FROM categories")
         for index, category in enumerate(CATEGORY_ORDER):
@@ -98,7 +99,7 @@ def normalize_existing_categories() -> None:
         """
         SELECT category, COUNT(*) AS count
         FROM entries
-        WHERE keep=1 AND valid=1 AND private=0
+        WHERE valid=1 AND private=0
         GROUP BY category
         ORDER BY count DESC
         """
@@ -121,7 +122,8 @@ def normalize_existing_categories() -> None:
 
     print(f"✅ 强制替换旧分类：{forced_changed} 条")
     print(f"✅ 归一化非标准分类：{normalized_changed} 条")
-    print(f"✅ 兜底清理非当前大类分类：{fallback_changed} 条")
+    print(f"✅ 兜底整理非当前大类分类：{fallback_changed} 条")
+    print(f"✅ 恢复旧 keep 状态：{restored if restored is not None else 0} 条")
     if old_rows:
         print("❌ 仍发现旧分类，请检查数据库写入权限：")
         for row in old_rows:
@@ -129,13 +131,13 @@ def normalize_existing_categories() -> None:
     else:
         print("✅ 已确认数据库中不存在历史分类残留。")
 
-    print("\n📊 当前可见资源大类统计：")
+    print("\n📊 当前公开有效资源大类统计：")
     for row in stats:
         print(f"  {row['category'] or '未分类'}：{row['count']} 条")
 
 
 def main() -> None:
-    print("🚀 开始重整 TG 索引数据库和前端数据...")
+    print("🚀 开始重整 TG 索引数据库分类和前端数据...")
     run_script(CATEGORIZE_SCRIPT)
     normalize_existing_categories()
     run_script(EXPORT_SCRIPT)
