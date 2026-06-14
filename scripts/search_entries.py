@@ -81,10 +81,10 @@ def build_relevance_order(keyword: str) -> tuple[str, list[Any], str]:
         CASE WHEN lower(username) LIKE lower(?) THEN 70 ELSE 0 END +
         CASE WHEN lower(title) LIKE lower(?) OR lower(clean_title) LIKE lower(?) THEN 60 ELSE 0 END +
         CASE WHEN lower(category) LIKE lower(?) THEN 35 ELSE 0 END +
-        CASE WHEN lower(description) LIKE lower(?) OR lower(clean_desc) LIKE lower(?) THEN 20 ELSE 0 END +
+        CASE WHEN lower(clean_desc) LIKE lower(?) THEN 20 ELSE 0 END +
         CASE WHEN lower(url) LIKE lower(?) THEN 15 ELSE 0 END
     """
-    params = [exact, exact, exact, prefix, like, like, like, like, like, like]
+    params = [exact, exact, exact, prefix, like, like, like, like, like]
     order_sql = "score DESC, COALESCE(count, 0) DESC, title COLLATE NOCASE, id DESC"
     return score_sql + " AS score", params, order_sql
 
@@ -99,7 +99,7 @@ def search_entries(
 ) -> dict[str, Any]:
     """搜索公开可见的 TG 索引条目。
 
-    tg_suoyin 不按内容或行业过滤；只搜索已经成功抓取且公开可见的资源。
+    搜索只使用标题、清洗后的简介、用户名、分类和 URL，避免原始群规文本干扰结果。
     """
     keyword = (keyword or "").strip()
     entry_type = normalize_type(entry_type)
@@ -115,18 +115,18 @@ def search_entries(
     if keyword:
         q = f"%{keyword}%"
         where.append(
-            "(title LIKE ? OR clean_title LIKE ? OR description LIKE ? OR clean_desc LIKE ? "
+            "(title LIKE ? OR clean_title LIKE ? OR clean_desc LIKE ? "
             "OR username LIKE ? OR category LIKE ? OR url LIKE ?)"
         )
-        params.extend([q, q, q, q, q, q, q])
+        params.extend([q, q, q, q, q, q])
 
     if entry_type:
         where.append("type = ?")
         params.append(entry_type)
 
     if category:
-        where.append("category = ?")
-        params.append(category)
+        where.append("category LIKE ?")
+        params.append(f"%{category}%")
 
     where_sql = " AND ".join(where)
 
@@ -221,7 +221,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="搜索 TG 索引数据库")
     parser.add_argument("keyword", nargs="?", default="", help="搜索关键词，不填则列出全部可见资源")
     parser.add_argument("--type", choices=TYPE_CHOICES, default=None, help="资源类型：channel/group/bot")
-    parser.add_argument("--category", default=None, help="分类名，例如：💻 科技AI")
+    parser.add_argument("--category", default=None, help="分类名，例如：科技AI、博彩资源，不要求输入 emoji")
     parser.add_argument("--limit", type=int, default=20, help="每页数量，最大 100")
     parser.add_argument("--page", type=int, default=1, help="页码")
     parser.add_argument("--sort", choices=("relevance", "latest"), default="relevance", help="排序方式")
