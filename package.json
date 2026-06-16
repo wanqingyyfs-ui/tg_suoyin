@@ -7,6 +7,11 @@
     "export": "cd web && npm run export",
     "rebuild": "python scripts/rebuild_index.py",
     "import-collected": "python scripts/import_collected_links.py",
-    "dev": "cd web && npm run dev"
+    "dev": "cd web && npm run dev",
+    "admin": "python scripts/admin_server.py",
+    "message-init": "python scripts/init_message_index.py",
+    "bot:poll": "python scripts/bot_listener.py poll",
+    "bot:webhook-info": "python scripts/bot_listener.py webhook-info",
+    "bot:delete-webhook": "python scripts/bot_listener.py delete-webhook"
   }
 }
