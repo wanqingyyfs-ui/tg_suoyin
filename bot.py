@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """TG 索引统一 Bot 主程序。
 
-以后机器人相关开发统一改这个文件：
-1. 监听已开启的频道/群组并建立消息索引；
-2. 私聊里回复用户搜索结果；
-3. 客户回复逻辑也从这里接入；
-4. 全程只使用同一个 TELEGRAM_BOT_TOKEN 和 Telegram Bot API。
+以后机器人相关开发统一改这个文件：bot.py。
+本文件包含完整功能，不依赖 bot_core.py：
+1. 一个 Bot Token / 一个 Bot API / 一个进程；
+2. 监听已开启频道/群组并建立消息索引；
+3. 私聊搜索回复频道、群组、消息锚点；
+4. 搜索回复广告位；
+5. 媒体消息 emoji、视频/音频时长、文件格式和大小；
+6. 无文本媒体不收录；回复文本的媒体用被回复文本索引，但锚链接指向当前媒体消息。
 """
 from __future__ import annotations
 
 import argparse
 import html
 import json
+import mimetypes
 import os
 import sys
 import time
@@ -28,7 +32,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from bot_api_client import ALLOWED_UPDATES, BotApiClient, get_bot_token, load_env_file, retry_sleep
 from message_indexer import index_message_if_enabled, open_db_with_schema, query_to_tokens
-from search_entries import TYPE_LABELS, search_entries
+from search_entries import search_entries
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8899
@@ -36,6 +40,30 @@ DEFAULT_SUMMARY_INTERVAL_SECONDS = 300
 MAX_REPLY_CHARS = 3900
 RESULT_DESC_CHARS = 20
 MAX_STORED_MESSAGE_TEXT_CHARS = 1000
+BOT_SEARCH_AD_POSITION = "bot_search_inline"
+MAX_BOT_ADS = 2
+
+ENTRY_EMOJI = {"channel": "📢", "group": "👥", "bot": "🤖"}
+MEDIA_EMOJI = {
+    "document": "📚",
+    "audio": "🎧",
+    "voice": "🎧",
+    "video": "🎬",
+    "video_note": "🎬",
+    "animation": "🎬",
+    "photo": "📸",
+    "text": "📃",
+}
+MEDIA_FALLBACK_TEXT = {
+    "document": "文件消息",
+    "audio": "音频消息",
+    "voice": "语音消息",
+    "video": "视频消息",
+    "video_note": "视频消息",
+    "animation": "视频消息",
+    "photo": "图片消息",
+    "text": "文本消息",
+}
 
 
 @dataclass
@@ -70,43 +98,189 @@ def short_text(value: str | None, limit: int = RESULT_DESC_CHARS) -> str:
     text = compact_text(value)
     if not text:
         return "暂无简介"
-    if len(text) <= limit:
-        return text
-    return text[:limit] + "…"
+    return text if len(text) <= limit else text[:limit] + "…"
 
 
-def extract_message_text(message: dict[str, Any]) -> str:
+def own_message_text(message: dict[str, Any]) -> str:
     return compact_text(message.get("text") or message.get("caption") or "")
 
 
-def ensure_message_text_column(conn) -> None:
+def reply_message_text(message: dict[str, Any]) -> str:
+    replied = message.get("reply_to_message") or {}
+    if not isinstance(replied, dict):
+        return ""
+    return compact_text(replied.get("text") or replied.get("caption") or "")
+
+
+def index_source_text(message: dict[str, Any]) -> str:
+    return own_message_text(message) or reply_message_text(message)
+
+
+def message_media_type(message: dict[str, Any]) -> str:
+    if message.get("document"):
+        return "document"
+    if message.get("audio"):
+        return "audio"
+    if message.get("voice"):
+        return "voice"
+    if message.get("video"):
+        return "video"
+    if message.get("video_note"):
+        return "video_note"
+    if message.get("animation"):
+        return "animation"
+    if message.get("photo"):
+        return "photo"
+    return "text"
+
+
+def format_duration(seconds: Any) -> str:
+    try:
+        total = int(seconds or 0)
+    except (TypeError, ValueError):
+        total = 0
+    if total <= 0:
+        return ""
+    hours = total // 3600
+    minutes = (total % 3600) // 60
+    secs = total % 60
+    return f"[{hours}:{minutes:02d}:{secs:02d}]" if hours else f"[{minutes:02d}:{secs:02d}]"
+
+
+def format_file_size(size_bytes: Any) -> str:
+    try:
+        size = int(size_bytes or 0)
+    except (TypeError, ValueError):
+        size = 0
+    if size <= 0:
+        return ""
+    return f"{size / 1024 / 1024:.2f}MB"
+
+
+def document_format(document: dict[str, Any]) -> str:
+    file_name = compact_text(document.get("file_name") or "")
+    suffix = Path(file_name).suffix.lower().lstrip(".") if file_name else ""
+    if suffix:
+        return suffix[:12]
+    mime_type = compact_text(document.get("mime_type") or "")
+    if mime_type:
+        guessed = mimetypes.guess_extension(mime_type) or ""
+        if guessed:
+            return guessed.lower().lstrip(".")[:12]
+        return mime_type.split("/")[-1].split(";")[0][:12] or "file"
+    return "file"
+
+
+def message_media_meta(message: dict[str, Any]) -> str:
+    media_type = message_media_type(message)
+    if media_type == "document":
+        document = message.get("document") or {}
+        file_format = document_format(document)
+        size = format_file_size(document.get("file_size"))
+        if file_format and size:
+            return f"[{file_format} {size}]"
+        if file_format:
+            return f"[{file_format}]"
+        if size:
+            return f"[{size}]"
+        return ""
+    if media_type in {"audio", "voice", "video", "video_note", "animation"}:
+        payload = message.get(media_type) or {}
+        return format_duration(payload.get("duration"))
+    return ""
+
+
+def ensure_message_extra_columns(conn) -> None:
     cols = {str(row["name"]) for row in conn.execute("PRAGMA table_info(message_index)").fetchall()}
-    if "text_preview" not in cols:
-        conn.execute("ALTER TABLE message_index ADD COLUMN text_preview TEXT")
+    changed = False
+    for name in ("text_preview", "media_type", "media_emoji", "media_meta", "index_source"):
+        if name not in cols:
+            conn.execute(f"ALTER TABLE message_index ADD COLUMN {name} TEXT")
+            changed = True
+    if changed:
         conn.commit()
 
 
-def save_message_text_preview(conn, message: dict[str, Any]) -> None:
+def ensure_ads_table(conn) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            position TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            url TEXT NOT NULL,
+            image_url TEXT,
+            sort_order INTEGER DEFAULT 0,
+            enabled INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ads_position_enabled_sort ON ads(position, enabled, sort_order, id)")
+    conn.commit()
+
+
+def load_bot_ads(limit: int = MAX_BOT_ADS) -> list[dict[str, Any]]:
+    conn = open_db_with_schema()
+    try:
+        ensure_ads_table(conn)
+        rows = conn.execute(
+            """
+            SELECT id, title, description, url, sort_order
+            FROM ads
+            WHERE enabled=1 AND position=?
+            ORDER BY sort_order ASC, id ASC
+            LIMIT ?
+            """,
+            (BOT_SEARCH_AD_POSITION, max(1, min(int(limit or MAX_BOT_ADS), 5))),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [dict(row) for row in rows]
+
+
+def format_ad_line(ad: dict[str, Any]) -> str:
+    title = compact_text(ad.get("title") or "广告")
+    desc = short_text(ad.get("description") or "", RESULT_DESC_CHARS)
+    url = compact_text(ad.get("url") or "")
+    link = f"<a href=\"{e(url)}\">{e(title)}</a>" if url else e(title)
+    return f"📌 广告：{link}" + (f" — {e(desc)}" if desc and desc != "暂无简介" else "")
+
+
+def save_message_extra_fields(conn, message: dict[str, Any], source_text: str) -> None:
     chat = message.get("chat") or {}
     chat_id = chat.get("id")
     message_id = message.get("message_id")
     if chat_id is None or message_id is None:
         return
-    text = extract_message_text(message)[:MAX_STORED_MESSAGE_TEXT_CHARS]
-    if not text:
-        return
-    ensure_message_text_column(conn)
+    ensure_message_extra_columns(conn)
+    media_type = message_media_type(message)
+    media_emoji = MEDIA_EMOJI.get(media_type, "📃")
+    media_meta = message_media_meta(message)
+    index_source = "self" if own_message_text(message) else "reply"
     conn.execute(
-        "UPDATE message_index SET text_preview=?, updated_at=datetime('now') WHERE chat_id=? AND message_id=?",
-        (text, int(chat_id), int(message_id)),
+        """
+        UPDATE message_index
+        SET text_preview=?, media_type=?, media_emoji=?, media_meta=?, index_source=?, updated_at=datetime('now')
+        WHERE chat_id=? AND message_id=?
+        """,
+        (source_text[:MAX_STORED_MESSAGE_TEXT_CHARS], media_type, media_emoji, media_meta, index_source, int(chat_id), int(message_id)),
     )
     conn.commit()
 
 
 def index_message_with_text(conn, message: dict[str, Any]) -> bool:
-    indexed = index_message_if_enabled(conn, message)
+    source_text = index_source_text(message)
+    if not source_text:
+        return False
+    indexable_message = dict(message)
+    indexable_message["text"] = source_text
+    indexable_message.pop("caption", None)
+    indexed = index_message_if_enabled(conn, indexable_message)
     if indexed:
-        save_message_text_preview(conn, message)
+        save_message_extra_fields(conn, message, source_text)
     return indexed
 
 
@@ -170,14 +344,13 @@ def search_message_results(keyword: str, limit: int = 8) -> list[dict[str, Any]]
         return []
     conn = open_db_with_schema()
     try:
-        ensure_message_text_column(conn)
+        ensure_message_extra_columns(conn)
         clauses = ["lower(mi.keywords) LIKE ?" for _ in tokens]
         params = [f"%{token.lower()}%" for token in tokens]
         rows = conn.execute(
             f"""
-            SELECT mi.*, e.title AS entry_title, e.username AS entry_username, e.url AS entry_url, e.type AS entry_type, e.clean_desc AS entry_desc
+            SELECT mi.*
             FROM message_index mi
-            LEFT JOIN entries e ON e.id = mi.entry_id
             WHERE {' OR '.join(clauses)}
             ORDER BY datetime(COALESCE(mi.message_date, mi.updated_at, mi.created_at)) DESC, mi.id DESC
             LIMIT ?
@@ -188,71 +361,53 @@ def search_message_results(keyword: str, limit: int = 8) -> list[dict[str, Any]]
         conn.close()
     results: list[dict[str, Any]] = []
     for row in rows:
-        message_id = row["message_id"]
-        chat_title = row["chat_title"] or row["entry_title"] or row["chat_username"] or "Telegram 消息"
-        results.append(
-            {
-                "kind": "message",
-                "title": f"消息 #{message_id}",
-                "source": chat_title,
-                "url": row["link"],
-                "desc": row["text_preview"] or "",
-                "type_label": "消息",
-                "date": row["message_date"] or "",
-            }
-        )
+        media_type = row["media_type"] or "text"
+        desc = row["text_preview"] or MEDIA_FALLBACK_TEXT.get(media_type, "消息")
+        results.append({
+            "kind": "message",
+            "emoji": row["media_emoji"] or MEDIA_EMOJI.get(media_type, "📃"),
+            "media_meta": row["media_meta"] or "",
+            "url": row["link"],
+            "desc": desc,
+        })
     return results
 
 
 def search_entry_results(keyword: str, limit: int = 6) -> list[dict[str, Any]]:
     result = search_entries(keyword=keyword, limit=limit)
-    items = result.get("items", [])
     rows: list[dict[str, Any]] = []
-    for item in items:
+    for item in result.get("items", []):
+        entry_type = item.get("type") or ""
         title = item.get("title") or item.get("username") or item.get("url") or "未命名"
-        rows.append(
-            {
-                "kind": "entry",
-                "title": title,
-                "source": item.get("username") or "",
-                "url": item.get("url") or "",
-                "desc": item.get("desc") or item.get("clean_desc") or item.get("description") or "",
-                "type_label": item.get("typeLabel") or TYPE_LABELS.get(item.get("type"), item.get("type") or "资源"),
-                "date": item.get("updated_at") or "",
-            }
-        )
+        desc = item.get("desc") or item.get("clean_desc") or item.get("description") or title
+        rows.append({
+            "kind": "entry",
+            "emoji": ENTRY_EMOJI.get(entry_type, "🔗"),
+            "media_meta": "",
+            "url": item.get("url") or "",
+            "desc": desc,
+        })
     return rows
 
 
 def format_search_reply(keyword: str) -> str:
-    """频道/群组和消息索引统一作为搜索结果返回。"""
-    entries = search_entry_results(keyword, limit=6)
-    messages = search_message_results(keyword, limit=8)
-    results = entries + messages
+    results = search_entry_results(keyword, limit=6) + search_message_results(keyword, limit=8)
     if not results:
         return "未找到匹配结果。"
-
-    lines: list[str] = [f"🔎 搜索：{e(keyword)}", ""]
-    for index, item in enumerate(results, 1):
-        url = item.get("url") or ""
-        title = item.get("title") or "未命名"
-        type_label = item.get("type_label") or "资源"
-        desc = short_text(item.get("desc"), RESULT_DESC_CHARS)
-        if url:
-            title_html = f"<a href=\"{e(url)}\">{e(title)}</a>"
-        else:
-            title_html = e(title)
-        if item.get("kind") == "message":
-            source = item.get("source") or ""
-            lines.append(f"{index}. [{e(type_label)}] {title_html}")
-            if source:
-                lines.append(f"   来源：{e(source)}")
-            lines.append(f"   内容：{e(desc)}")
-        else:
-            lines.append(f"{index}. [{e(type_label)}] {title_html}")
-            lines.append(f"   简介：{e(desc)}")
+    lines: list[str] = [f"🔎 搜索：{e(keyword)}"]
+    ads = load_bot_ads()
+    if ads:
+        for ad in ads:
+            lines.append(format_ad_line(ad))
         lines.append("")
-
+    for index, item in enumerate(results, 1):
+        emoji = item.get("emoji") or "🔗"
+        media_meta = item.get("media_meta") or ""
+        prefix = f"{emoji}{media_meta}"
+        text = short_text(item.get("desc"), RESULT_DESC_CHARS)
+        url = item.get("url") or ""
+        display = f"<a href=\"{e(url)}\">{e(text)}</a>" if url else e(text)
+        lines.append(f"{index}. {prefix} {display}")
     text = "\n".join(lines).strip()
     if len(text) > MAX_REPLY_CHARS:
         text = text[: MAX_REPLY_CHARS - 20] + "\n……结果过多，已截断。"
@@ -260,14 +415,7 @@ def format_search_reply(keyword: str) -> str:
 
 
 def build_customer_reply(message: dict[str, Any]) -> str | None:
-    """客户回复逻辑入口。
-
-    以后客户自动回复、关键词回复、广告回复、人工客服转接，统一从这里开发。
-    当前默认策略：私聊普通文本直接作为搜索关键词回复；如果要接入其它客户回复逻辑，
-    不要再开第二个 Bot 进程，直接改这个函数。
-    """
-    text = str(message.get("text") or "").strip()
-    keyword = normalize_query(text)
+    keyword = normalize_query(str(message.get("text") or ""))
     if keyword:
         return format_search_reply(keyword)
     return None
@@ -280,17 +428,14 @@ def handle_private_message(client: BotApiClient, message: dict[str, Any]) -> str
     chat_id = chat.get("id")
     if not chat_id:
         return "ignored"
-
     text = str(message.get("text") or "").strip()
     if text.startswith("/start") or text.startswith("/help"):
         client.send_message(chat_id, "发送关键词即可搜索频道/群组和已监听到的消息锚点。\n也可以使用：/search 关键词")
         return "user_reply"
-
     if text.startswith("/search") or text.startswith("/s "):
         keyword = normalize_query(text)
         client.send_message(chat_id, format_search_reply(keyword) if keyword else "请输入搜索关键词，例如：/search AI", parse_mode="HTML")
         return "private_search"
-
     reply = build_customer_reply(message)
     if reply:
         client.send_message(chat_id, reply, parse_mode="HTML")
@@ -303,11 +448,9 @@ def process_update(update: dict[str, Any], client: BotApiClient | None = None) -
     _kind, message = get_update_message(update)
     if not message:
         return "ignored"
-
     private_result = handle_private_message(bot, message)
     if private_result != "not_private":
         return private_result
-
     conn = open_db_with_schema()
     try:
         return "indexed" if index_message_with_text(conn, message) else "ignored"
@@ -348,8 +491,7 @@ def run_polling(drop_webhook: bool = True, summary_interval: int | None = None) 
                 if update_id:
                     offset = update_id + 1
                 try:
-                    result = process_update(update, bot)
-                    apply_result_to_stats(stats, result)
+                    apply_result_to_stats(stats, process_update(update, bot))
                 except Exception as exc:
                     stats.errors += 1
                     print(f"⚠️ 处理 update_id={update_id} 失败：{exc}", file=sys.stderr)
@@ -396,8 +538,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         try:
             update = json.loads(raw.decode("utf-8"))
             stats.updates += 1
-            result = process_update(update, getattr(self.server, "bot_client"))
-            apply_result_to_stats(stats, result)
+            apply_result_to_stats(stats, process_update(update, getattr(self.server, "bot_client")))
         except Exception as exc:
             stats.errors += 1
             print(f"⚠️ Webhook 处理失败：{exc}", file=sys.stderr)
@@ -435,8 +576,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("poll", help="本地 long polling 运行统一 Bot")
-    p.add_argument("--keep-webhook", action="store_true", help="不主动删除 webhook。通常不要使用。")
-    p.add_argument("--summary-interval", type=int, default=None, help="终端汇总打印间隔，秒。默认读取后台设置，初始为300秒。")
+    p.add_argument("--keep-webhook", action="store_true")
+    p.add_argument("--summary-interval", type=int, default=None)
 
     p = sub.add_parser("webhook-server", help="启动统一 Bot webhook HTTP 服务")
     p.add_argument("--host", default=os.environ.get("BOT_WEBHOOK_HOST", DEFAULT_HOST))
@@ -445,7 +586,7 @@ def main() -> None:
     p.add_argument("--summary-interval", type=int, default=None)
 
     p = sub.add_parser("set-webhook", help="向 Telegram 设置 webhook URL")
-    p.add_argument("url", help="公网 HTTPS URL，例如 https://example.com/tg-webhook")
+    p.add_argument("url")
     p.add_argument("--secret", default=os.environ.get("BOT_WEBHOOK_SECRET", ""))
     p.add_argument("--drop-pending-updates", action="store_true")
 
