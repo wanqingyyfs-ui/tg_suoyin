@@ -42,6 +42,7 @@ RESULT_DESC_CHARS = 20
 MAX_STORED_MESSAGE_TEXT_CHARS = 1000
 BOT_SEARCH_AD_POSITION = "bot_search_inline"
 MAX_BOT_ADS = 2
+AD_MEDALS = ("🥇", "🥈", "🥉")
 
 ENTRY_EMOJI = {"channel": "📢", "group": "👥", "bot": "🤖"}
 MEDIA_EMOJI = {
@@ -241,12 +242,16 @@ def load_bot_ads(limit: int = MAX_BOT_ADS) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def format_ad_line(ad: dict[str, Any]) -> str:
+def ad_medal(rank: int) -> str:
+    return AD_MEDALS[rank - 1] if 1 <= rank <= len(AD_MEDALS) else "🏅"
+
+
+def format_ad_line(ad: dict[str, Any], rank: int) -> str:
     title = compact_text(ad.get("title") or "广告")
     desc = short_text(ad.get("description") or "", RESULT_DESC_CHARS)
     url = compact_text(ad.get("url") or "")
     link = f"<a href=\"{e(url)}\">{e(title)}</a>" if url else e(title)
-    return f"📌 广告：{link}" + (f" — {e(desc)}" if desc and desc != "暂无简介" else "")
+    return f"{ad_medal(rank)} {link}" + (f" — {e(desc)}" if desc and desc != "暂无简介" else "")
 
 
 def save_message_extra_fields(conn, message: dict[str, Any], source_text: str) -> None:
@@ -397,8 +402,8 @@ def format_search_reply(keyword: str) -> str:
     lines: list[str] = [f"🔎 搜索：{e(keyword)}"]
     ads = load_bot_ads()
     if ads:
-        for ad in ads:
-            lines.append(format_ad_line(ad))
+        for rank, ad in enumerate(ads, 1):
+            lines.append(format_ad_line(ad, rank))
         lines.append("")
     for index, item in enumerate(results, 1):
         emoji = item.get("emoji") or "🔗"
