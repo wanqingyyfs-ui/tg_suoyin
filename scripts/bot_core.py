@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import mimetypes
 import os
 import sys
 import time
@@ -128,10 +129,68 @@ def message_media_type(message: dict[str, Any]) -> str:
     return "text"
 
 
+def format_duration(seconds: Any) -> str:
+    try:
+        total = int(seconds or 0)
+    except (TypeError, ValueError):
+        total = 0
+    if total <= 0:
+        return ""
+    hours = total // 3600
+    minutes = (total % 3600) // 60
+    secs = total % 60
+    if hours:
+        return f"[{hours}:{minutes:02d}:{secs:02d}]"
+    return f"[{minutes:02d}:{secs:02d}]"
+
+
+def format_file_size(size_bytes: Any) -> str:
+    try:
+        size = int(size_bytes or 0)
+    except (TypeError, ValueError):
+        size = 0
+    if size <= 0:
+        return ""
+    return f"{size / 1024 / 1024:.2f}MB"
+
+
+def document_format(document: dict[str, Any]) -> str:
+    file_name = compact_text(document.get("file_name") or "")
+    suffix = Path(file_name).suffix.lower().lstrip(".") if file_name else ""
+    if suffix:
+        return suffix[:12]
+    mime_type = compact_text(document.get("mime_type") or "")
+    if mime_type:
+        guessed = mimetypes.guess_extension(mime_type) or ""
+        if guessed:
+            return guessed.lower().lstrip(".")[:12]
+        return mime_type.split("/")[-1].split(";")[0][:12] or "file"
+    return "file"
+
+
+def message_media_meta(message: dict[str, Any]) -> str:
+    media_type = message_media_type(message)
+    if media_type == "document":
+        document = message.get("document") or {}
+        file_format = document_format(document)
+        size = format_file_size(document.get("file_size"))
+        if file_format and size:
+            return f"[{file_format} {size}]"
+        if file_format:
+            return f"[{file_format}]"
+        if size:
+            return f"[{size}]"
+        return ""
+    if media_type in {"audio", "voice", "video", "video_note", "animation"}:
+        payload = message.get(media_type) or {}
+        return format_duration(payload.get("duration"))
+    return ""
+
+
 def ensure_message_extra_columns(conn) -> None:
     cols = {str(row["name"]) for row in conn.execute("PRAGMA table_info(message_index)").fetchall()}
     changed = False
-    for name in ("text_preview", "media_type", "media_emoji", "index_source"):
+    for name in ("text_preview", "media_type", "media_emoji", "media_meta", "index_source"):
         if name not in cols:
             conn.execute(f"ALTER TABLE message_index ADD COLUMN {name} TEXT")
             changed = True
@@ -148,14 +207,15 @@ def save_message_extra_fields(conn, message: dict[str, Any], source_text: str) -
     ensure_message_extra_columns(conn)
     media_type = message_media_type(message)
     media_emoji = MEDIA_EMOJI.get(media_type, "📃")
+    media_meta = message_media_meta(message)
     index_source = "self" if own_message_text(message) else "reply"
     conn.execute(
         """
         UPDATE message_index
-        SET text_preview=?, media_type=?, media_emoji=?, index_source=?, updated_at=datetime('now')
+        SET text_preview=?, media_type=?, media_emoji=?, media_meta=?, index_source=?, updated_at=datetime('now')
         WHERE chat_id=? AND message_id=?
         """,
-        (source_text[:MAX_STORED_MESSAGE_TEXT_CHARS], media_type, media_emoji, index_source, int(chat_id), int(message_id)),
+        (source_text[:MAX_STORED_MESSAGE_TEXT_CHARS], media_type, media_emoji, media_meta, index_source, int(chat_id), int(message_id)),
     )
     conn.commit()
 
@@ -261,6 +321,7 @@ def search_message_results(keyword: str, limit: int = 8) -> list[dict[str, Any]]
             {
                 "kind": "message",
                 "emoji": row["media_emoji"] or MEDIA_EMOJI.get(media_type, "📃"),
+                "media_meta": row["media_meta"] or "",
                 "url": row["link"],
                 "desc": desc,
             }
@@ -279,6 +340,7 @@ def search_entry_results(keyword: str, limit: int = 6) -> list[dict[str, Any]]:
             {
                 "kind": "entry",
                 "emoji": ENTRY_EMOJI.get(entry_type, "🔗"),
+                "media_meta": "",
                 "url": item.get("url") or "",
                 "desc": desc,
             }
@@ -293,10 +355,12 @@ def format_search_reply(keyword: str) -> str:
     lines: list[str] = [f"🔎 搜索：{e(keyword)}"]
     for index, item in enumerate(results, 1):
         emoji = item.get("emoji") or "🔗"
+        media_meta = item.get("media_meta") or ""
+        prefix = f"{emoji}{media_meta}"
         text = short_text(item.get("desc"), RESULT_DESC_CHARS)
         url = item.get("url") or ""
         display = f"<a href=\"{e(url)}\">{e(text)}</a>" if url else e(text)
-        lines.append(f"{index}. {emoji} {display}")
+        lines.append(f"{index}. {prefix} {display}")
     text = "\n".join(lines).strip()
     if len(text) > MAX_REPLY_CHARS:
         text = text[: MAX_REPLY_CHARS - 20] + "\n……结果过多，已截断。"
