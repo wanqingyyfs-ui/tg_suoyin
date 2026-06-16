@@ -87,15 +87,21 @@ class BotApiClient:
     def get_chat_member(self, chat_id: int | str, user_id: int) -> dict[str, Any]:
         return self.call("getChatMember", {"chat_id": chat_id, "user_id": user_id})
 
-    def send_message(self, chat_id: int | str, text: str, disable_web_page_preview: bool = True) -> Any:
-        return self.call(
-            "sendMessage",
-            {
-                "chat_id": chat_id,
-                "text": text,
-                "disable_web_page_preview": disable_web_page_preview,
-            },
-        )
+    def send_message(
+        self,
+        chat_id: int | str,
+        text: str,
+        disable_web_page_preview: bool = True,
+        parse_mode: str | None = None,
+    ) -> Any:
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "text": text,
+            "disable_web_page_preview": disable_web_page_preview,
+        }
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
+        return self.call("sendMessage", payload)
 
     def get_updates(self, offset: int | None = None, timeout: int = 30) -> list[dict[str, Any]]:
         payload: dict[str, Any] = {"timeout": timeout, "allowed_updates": ALLOWED_UPDATES}
@@ -142,11 +148,7 @@ def check_bot_can_listen(entry: dict[str, Any], client: BotApiClient | None = No
         me = bot.get_me()
         member = bot.get_chat_member(chat.get("id", chat_ref), int(me["id"]))
     except BotApiError as exc:
-        return ListenCheckResult(
-            ok=False,
-            status="error",
-            message=f"该群组/频道无法启动监听功能，请检查 bot 权限。详情：{exc}",
-        )
+        return ListenCheckResult(ok=False, status="error", message=f"该群组/频道无法启动监听功能，请检查 bot 权限。详情：{exc}")
 
     status = str(member.get("status") or "")
     chat_type = str(chat.get("type") or entry.get("type") or "")
