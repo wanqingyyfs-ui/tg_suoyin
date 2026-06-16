@@ -12,6 +12,7 @@
     "message-init": "python scripts/init_message_index.py",
     "listener:list": "python scripts/manage_listeners.py list",
     "listener:init": "python scripts/manage_listeners.py init",
+    "listener:settings": "python scripts/listener_settings.py",
     "bot:poll": "python scripts/bot_listener.py poll",
     "bot:webhook-info": "python scripts/bot_listener.py webhook-info",
     "bot:delete-webhook": "python scripts/bot_listener.py delete-webhook"
