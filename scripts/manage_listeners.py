@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Manage Bot API message listeners from CLI.
-
-This is the safe operational companion for the admin UI: list resources, enable
-or disable Bot API message listening, and inspect indexed message anchors.
-"""
+"""Manage Bot API message listeners from CLI."""
 from __future__ import annotations
 
 import argparse
@@ -11,10 +7,10 @@ import sqlite3
 from typing import Any
 
 from bot_api_client import BotApiClient, BotApiError, check_bot_can_listen, get_bot_token, load_env_file
+from listener_settings import get_interval, set_interval
 from message_indexer import (
     clear_message_index,
     delete_message_index_row,
-    init_message_index_schema,
     list_listening_entries,
     list_message_index_rows,
     message_index_stats,
@@ -31,11 +27,13 @@ def cmd_init(_args: argparse.Namespace) -> None:
     conn = open_db_with_schema()
     try:
         stats = message_index_stats(conn)
+        interval = get_interval(conn)
     finally:
         conn.close()
     print("✅ 消息监听和消息索引结构已准备完成")
     for key, value in stats.items():
         print(f"{key}: {value}")
+    print(f"terminal_summary_interval_seconds: {interval}")
 
 
 def cmd_list(_args: argparse.Namespace) -> None:
@@ -57,64 +55,89 @@ def cmd_list(_args: argparse.Namespace) -> None:
 def get_entry(conn: sqlite3.Connection, entry_id: int) -> sqlite3.Row:
     row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
     if not row:
-        raise SystemExit(f"❌ 未找到资源 id={entry_id}")
+        raise ValueError(f"未找到资源 id={entry_id}")
     return row
+
+
+def enable_one(conn: sqlite3.Connection, client: BotApiClient, entry_id: int) -> tuple[bool, str]:
+    row = get_entry(conn, entry_id)
+    if row["type"] not in ("channel", "group"):
+        return False, "只有频道和群组支持监听"
+    result = check_bot_can_listen(row_dict(row), client)
+    if not result.ok:
+        conn.execute(
+            "UPDATE entries SET listen_enabled=0, listen_status='error', listen_error=?, listen_checked_at=datetime('now'), updated_at=datetime('now') WHERE id=?",
+            (result.message, entry_id),
+        )
+        conn.commit()
+        return False, result.message
+    conn.execute(
+        """
+        UPDATE entries SET
+            listen_enabled=1,
+            listen_status='active',
+            listen_error=NULL,
+            listen_checked_at=datetime('now'),
+            telegram_id=COALESCE(?, telegram_id),
+            username=COALESCE(NULLIF(?, ''), username),
+            updated_at=datetime('now')
+        WHERE id=?
+        """,
+        (result.chat_id, result.chat_username, entry_id),
+    )
+    conn.commit()
+    return True, "监听已开启"
 
 
 def cmd_enable(args: argparse.Namespace) -> None:
     load_env_file()
     conn = open_db_with_schema()
+    client = BotApiClient(get_bot_token())
+    ok_count = 0
     try:
-        row = get_entry(conn, args.id)
-        if row["type"] not in ("channel", "group"):
-            raise SystemExit("❌ 只有频道和群组支持监听")
-        result = check_bot_can_listen(row_dict(row), BotApiClient(get_bot_token()))
-        if not result.ok:
-            conn.execute(
-                "UPDATE entries SET listen_enabled=0, listen_status='error', listen_error=?, listen_checked_at=datetime('now'), updated_at=datetime('now') WHERE id=?",
-                (result.message, args.id),
-            )
-            conn.commit()
-            raise SystemExit("❌ " + result.message)
-        conn.execute(
-            """
-            UPDATE entries SET
-                listen_enabled=1,
-                listen_status='active',
-                listen_error=NULL,
-                listen_checked_at=datetime('now'),
-                telegram_id=COALESCE(?, telegram_id),
-                username=COALESCE(NULLIF(?, ''), username),
-                updated_at=datetime('now')
-            WHERE id=?
-            """,
-            (result.chat_id, result.chat_username, args.id),
-        )
-        conn.commit()
-    except BotApiError as exc:
-        conn.execute(
-            "UPDATE entries SET listen_enabled=0, listen_status='error', listen_error=?, listen_checked_at=datetime('now'), updated_at=datetime('now') WHERE id=?",
-            (str(exc), args.id),
-        )
-        conn.commit()
-        raise SystemExit(f"❌ 该群组/频道无法启动监听功能，请检查 bot 权限。详情：{exc}")
+        for entry_id in args.ids:
+            try:
+                ok, message = enable_one(conn, client, entry_id)
+            except (BotApiError, ValueError) as exc:
+                ok, message = False, f"该群组/频道无法启动监听功能，请检查 bot 权限。详情：{exc}"
+            if ok:
+                ok_count += 1
+                print(f"✅ id={entry_id} {message}")
+            else:
+                print(f"❌ id={entry_id} {message}")
     finally:
         conn.close()
-    print(f"✅ 已开启监听 id={args.id}")
+    print(f"完成：成功开启 {ok_count}/{len(args.ids)} 个资源。")
 
 
 def cmd_disable(args: argparse.Namespace) -> None:
     conn = open_db_with_schema()
     try:
-        get_entry(conn, args.id)
-        conn.execute(
-            "UPDATE entries SET listen_enabled=0, listen_status='off', listen_error=NULL, listen_checked_at=datetime('now'), updated_at=datetime('now') WHERE id=?",
-            (args.id,),
-        )
-        conn.commit()
+        for entry_id in args.ids:
+            try:
+                get_entry(conn, entry_id)
+                conn.execute(
+                    "UPDATE entries SET listen_enabled=0, listen_status='off', listen_error=NULL, listen_checked_at=datetime('now'), updated_at=datetime('now') WHERE id=?",
+                    (entry_id,),
+                )
+                conn.commit()
+                print(f"✅ 已关闭监听 id={entry_id}")
+            except ValueError as exc:
+                print(f"❌ {exc}")
     finally:
         conn.close()
-    print(f"✅ 已关闭监听 id={args.id}")
+
+
+def cmd_settings(args: argparse.Namespace) -> None:
+    conn = open_db_with_schema()
+    try:
+        if args.summary_interval is not None:
+            value = set_interval(conn, args.summary_interval)
+            print(f"✅ 终端汇总间隔已设置为 {value} 秒")
+        else:
+            print(f"当前终端汇总间隔：{get_interval(conn)} 秒")
+    finally:
+        conn.close()
 
 
 def cmd_search(args: argparse.Namespace) -> None:
@@ -173,13 +196,17 @@ def main() -> None:
     p = sub.add_parser("list", help="列出频道/群组监听状态")
     p.set_defaults(func=cmd_list)
 
-    p = sub.add_parser("enable", help="开启某个资源的监听")
-    p.add_argument("id", type=int)
+    p = sub.add_parser("enable", help="开启一个或多个资源的监听")
+    p.add_argument("ids", type=int, nargs="+", help="资源 ID，可一次传多个，例如：enable 1 2 3")
     p.set_defaults(func=cmd_enable)
 
-    p = sub.add_parser("disable", help="关闭某个资源的监听")
-    p.add_argument("id", type=int)
+    p = sub.add_parser("disable", help="关闭一个或多个资源的监听")
+    p.add_argument("ids", type=int, nargs="+", help="资源 ID，可一次传多个，例如：disable 1 2 3")
     p.set_defaults(func=cmd_disable)
+
+    p = sub.add_parser("settings", help="查看或设置监听器参数")
+    p.add_argument("--summary-interval", type=int, default=None, help="终端汇总打印间隔，单位秒，默认300秒")
+    p.set_defaults(func=cmd_settings)
 
     p = sub.add_parser("search", help="搜索消息锚点")
     p.add_argument("keyword")
