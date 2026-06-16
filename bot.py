@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import os
 import sys
@@ -26,13 +27,15 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from bot_api_client import ALLOWED_UPDATES, BotApiClient, get_bot_token, load_env_file, retry_sleep
-from message_indexer import index_message_if_enabled, open_db_with_schema, search_message_index
+from message_indexer import index_message_if_enabled, open_db_with_schema, query_to_tokens
 from search_entries import TYPE_LABELS, search_entries
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8899
 DEFAULT_SUMMARY_INTERVAL_SECONDS = 300
 MAX_REPLY_CHARS = 3900
+RESULT_DESC_CHARS = 20
+MAX_STORED_MESSAGE_TEXT_CHARS = 1000
 
 
 @dataclass
@@ -53,6 +56,58 @@ class BotStats:
         self.private_searches = 0
         self.ignored = 0
         self.errors = 0
+
+
+def e(value: Any) -> str:
+    return html.escape(str(value or ""), quote=True)
+
+
+def compact_text(value: str | None) -> str:
+    return " ".join((value or "").split()).strip()
+
+
+def short_text(value: str | None, limit: int = RESULT_DESC_CHARS) -> str:
+    text = compact_text(value)
+    if not text:
+        return "暂无简介"
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "…"
+
+
+def extract_message_text(message: dict[str, Any]) -> str:
+    return compact_text(message.get("text") or message.get("caption") or "")
+
+
+def ensure_message_text_column(conn) -> None:
+    cols = {str(row["name"]) for row in conn.execute("PRAGMA table_info(message_index)").fetchall()}
+    if "text_preview" not in cols:
+        conn.execute("ALTER TABLE message_index ADD COLUMN text_preview TEXT")
+        conn.commit()
+
+
+def save_message_text_preview(conn, message: dict[str, Any]) -> None:
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id")
+    message_id = message.get("message_id")
+    if chat_id is None or message_id is None:
+        return
+    text = extract_message_text(message)[:MAX_STORED_MESSAGE_TEXT_CHARS]
+    if not text:
+        return
+    ensure_message_text_column(conn)
+    conn.execute(
+        "UPDATE message_index SET text_preview=?, updated_at=datetime('now') WHERE chat_id=? AND message_id=?",
+        (text, int(chat_id), int(message_id)),
+    )
+    conn.commit()
+
+
+def index_message_with_text(conn, message: dict[str, Any]) -> bool:
+    indexed = index_message_if_enabled(conn, message)
+    if indexed:
+        save_message_text_preview(conn, message)
+    return indexed
 
 
 def safe_summary_interval(value: int | str | None = None) -> int:
@@ -97,7 +152,7 @@ def get_update_message(update: dict[str, Any]) -> tuple[str, dict[str, Any] | No
 
 
 def normalize_query(text: str) -> str:
-    value = " ".join((text or "").split()).strip()
+    value = compact_text(text)
     if not value:
         return ""
     if value.startswith("/search"):
@@ -109,35 +164,96 @@ def normalize_query(text: str) -> str:
     return value
 
 
-def format_search_reply(keyword: str) -> str:
-    entry_result = search_entries(keyword=keyword, limit=6)
+def search_message_results(keyword: str, limit: int = 8) -> list[dict[str, Any]]:
+    tokens = query_to_tokens(keyword)
+    if not tokens:
+        return []
     conn = open_db_with_schema()
     try:
-        message_hits = search_message_index(conn, keyword, limit=8)
+        ensure_message_text_column(conn)
+        clauses = ["lower(mi.keywords) LIKE ?" for _ in tokens]
+        params = [f"%{token.lower()}%" for token in tokens]
+        rows = conn.execute(
+            f"""
+            SELECT mi.*, e.title AS entry_title, e.username AS entry_username, e.url AS entry_url, e.type AS entry_type, e.clean_desc AS entry_desc
+            FROM message_index mi
+            LEFT JOIN entries e ON e.id = mi.entry_id
+            WHERE {' OR '.join(clauses)}
+            ORDER BY datetime(COALESCE(mi.message_date, mi.updated_at, mi.created_at)) DESC, mi.id DESC
+            LIMIT ?
+            """,
+            [*params, max(1, min(int(limit or 8), 30))],
+        ).fetchall()
     finally:
         conn.close()
+    results: list[dict[str, Any]] = []
+    for row in rows:
+        message_id = row["message_id"]
+        chat_title = row["chat_title"] or row["entry_title"] or row["chat_username"] or "Telegram 消息"
+        results.append(
+            {
+                "kind": "message",
+                "title": f"消息 #{message_id}",
+                "source": chat_title,
+                "url": row["link"],
+                "desc": row["text_preview"] or "",
+                "type_label": "消息",
+                "date": row["message_date"] or "",
+            }
+        )
+    return results
 
-    lines: list[str] = [f"搜索：{keyword}"]
-    entries = entry_result.get("items", [])
-    if entries:
-        lines.append("\n频道 / 群组：")
-        for index, item in enumerate(entries, 1):
-            title = item.get("title") or item.get("username") or "未命名"
-            type_label = item.get("typeLabel") or TYPE_LABELS.get(item.get("type"), item.get("type") or "资源")
-            url = item.get("url") or ""
-            lines.append(f"{index}. [{type_label}] {title}\n{url}")
 
-    if message_hits:
-        lines.append("\n消息锚点：")
-        for index, hit in enumerate(message_hits, 1):
-            anchor = hit.get("anchor_text") or "相关消息"
-            link = hit.get("link") or ""
-            lines.append(f"{index}. {anchor}\n{link}")
+def search_entry_results(keyword: str, limit: int = 6) -> list[dict[str, Any]]:
+    result = search_entries(keyword=keyword, limit=limit)
+    items = result.get("items", [])
+    rows: list[dict[str, Any]] = []
+    for item in items:
+        title = item.get("title") or item.get("username") or item.get("url") or "未命名"
+        rows.append(
+            {
+                "kind": "entry",
+                "title": title,
+                "source": item.get("username") or "",
+                "url": item.get("url") or "",
+                "desc": item.get("desc") or item.get("clean_desc") or item.get("description") or "",
+                "type_label": item.get("typeLabel") or TYPE_LABELS.get(item.get("type"), item.get("type") or "资源"),
+                "date": item.get("updated_at") or "",
+            }
+        )
+    return rows
 
-    if not entries and not message_hits:
+
+def format_search_reply(keyword: str) -> str:
+    """频道/群组和消息索引统一作为搜索结果返回。"""
+    entries = search_entry_results(keyword, limit=6)
+    messages = search_message_results(keyword, limit=8)
+    results = entries + messages
+    if not results:
         return "未找到匹配结果。"
 
-    text = "\n".join(lines)
+    lines: list[str] = [f"🔎 搜索：{e(keyword)}", ""]
+    for index, item in enumerate(results, 1):
+        url = item.get("url") or ""
+        title = item.get("title") or "未命名"
+        type_label = item.get("type_label") or "资源"
+        desc = short_text(item.get("desc"), RESULT_DESC_CHARS)
+        if url:
+            title_html = f"<a href=\"{e(url)}\">{e(title)}</a>"
+        else:
+            title_html = e(title)
+        if item.get("kind") == "message":
+            source = item.get("source") or ""
+            lines.append(f"{index}. [{e(type_label)}] {title_html}")
+            if source:
+                lines.append(f"   来源：{e(source)}")
+            lines.append(f"   内容：{e(desc)}")
+        else:
+            lines.append(f"{index}. [{e(type_label)}] {title_html}")
+            lines.append(f"   简介：{e(desc)}")
+        lines.append("")
+
+    text = "\n".join(lines).strip()
     if len(text) > MAX_REPLY_CHARS:
         text = text[: MAX_REPLY_CHARS - 20] + "\n……结果过多，已截断。"
     return text
@@ -172,12 +288,12 @@ def handle_private_message(client: BotApiClient, message: dict[str, Any]) -> str
 
     if text.startswith("/search") or text.startswith("/s "):
         keyword = normalize_query(text)
-        client.send_message(chat_id, format_search_reply(keyword) if keyword else "请输入搜索关键词，例如：/search AI")
+        client.send_message(chat_id, format_search_reply(keyword) if keyword else "请输入搜索关键词，例如：/search AI", parse_mode="HTML")
         return "private_search"
 
     reply = build_customer_reply(message)
     if reply:
-        client.send_message(chat_id, reply)
+        client.send_message(chat_id, reply, parse_mode="HTML")
         return "user_reply"
     return "ignored"
 
@@ -194,7 +310,7 @@ def process_update(update: dict[str, Any], client: BotApiClient | None = None) -
 
     conn = open_db_with_schema()
     try:
-        return "indexed" if index_message_if_enabled(conn, message) else "ignored"
+        return "indexed" if index_message_with_text(conn, message) else "ignored"
     finally:
         conn.close()
 
