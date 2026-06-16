@@ -8,13 +8,13 @@
     "rebuild": "python scripts/rebuild_index.py",
     "import-collected": "python scripts/import_collected_links.py",
     "dev": "cd web && npm run dev",
-    "admin": "python scripts/admin_server.py",
+    "admin": "python scripts/admin_dashboard.py",
     "message-init": "python scripts/init_message_index.py",
     "listener:list": "python scripts/manage_listeners.py list",
     "listener:init": "python scripts/manage_listeners.py init",
     "listener:settings": "python scripts/listener_settings.py",
-    "bot:poll": "python scripts/bot_listener.py poll",
-    "bot:webhook-info": "python scripts/bot_listener.py webhook-info",
-    "bot:delete-webhook": "python scripts/bot_listener.py delete-webhook"
+    "bot:poll": "python bot.py poll",
+    "bot:webhook-info": "python bot.py webhook-info",
+    "bot:delete-webhook": "python bot.py delete-webhook"
   }
 }
