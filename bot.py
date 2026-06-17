@@ -6,7 +6,7 @@
 1. 一个 Bot Token / 一个 Bot API / 一个进程；
 2. 监听已开启频道/群组并建立消息索引；
 3. 私聊搜索回复频道、群组、消息锚点；
-4. 群组里明确触发搜索时回复，普通群消息只索引不刷屏；
+4. 群组里只有 @机器人用户名 关键词 才回复，普通群消息只索引不刷屏；
 5. 搜索回复广告位；
 6. 媒体消息 emoji、视频/音频时长、文件格式和大小；
 7. 无文本媒体不收录；回复文本的媒体用被回复文本索引，但锚链接指向当前媒体消息。
@@ -354,48 +354,21 @@ def bot_username(client: BotApiClient) -> str:
         return ""
 
 
-def command_parts(text: str) -> tuple[str, str, str]:
-    first, rest = (text.split(maxsplit=1) + [""])[:2] if text else ("", "")
-    command, _, mention = first.partition("@")
-    return command.lower(), mention.lower(), rest.strip()
-
-
-def command_targets_this_bot(mention: str, bot_name: str) -> bool:
-    return not mention or (bot_name and mention == bot_name)
-
-
-def group_search_query(client: BotApiClient, message: dict[str, Any]) -> tuple[str, str]:
+def group_mention_query(client: BotApiClient, message: dict[str, Any]) -> str:
     text = compact_text(message.get("text") or "")
     if not text:
-        return "", ""
+        return ""
     chat = message.get("chat") or {}
     if chat.get("type") not in {"group", "supergroup"}:
-        return "", ""
-
+        return ""
     name = bot_username(client)
+    if not name:
+        return ""
     lower = text.lower()
-    mention_prefix = f"@{name}" if name else ""
-    if mention_prefix and lower.startswith(mention_prefix):
-        return "search", text[len(mention_prefix):].strip()
-
-    command, mention, rest = command_parts(text)
-    if command in {"/start", "/help"} and command_targets_this_bot(mention, name):
-        return "help", ""
-    if command in {"/search", "/s"} and command_targets_this_bot(mention, name):
-        return "search", rest
-
-    replied = message.get("reply_to_message") or {}
-    replied_from = replied.get("from") if isinstance(replied, dict) else {}
-    me_id = None
-    try:
-        me_id = int(client.get_me().get("id") or 0)
-    except Exception:
-        me_id = None
-    if me_id and isinstance(replied_from, dict) and int(replied_from.get("id") or 0) == me_id:
-        query = normalize_query(text)
-        if query:
-            return "search", query
-    return "", ""
+    mention = f"@{name}"
+    if not lower.startswith(mention):
+        return ""
+    return text[len(mention):].strip()
 
 
 def search_message_results(keyword: str, limit: int = 8) -> list[dict[str, Any]]:
@@ -510,19 +483,11 @@ def handle_group_message(client: BotApiClient, message: dict[str, Any]) -> str:
     chat_id = chat.get("id")
     if not chat_id:
         return "ignored"
-    action, query = group_search_query(client, message)
-    if not action:
+    query = group_mention_query(client, message)
+    if not query:
         return "not_group"
-    if action == "help":
-        client.send_message(chat_id, "群里请用：/search 关键词 或 /search@机器人用户名 关键词。普通消息只用于监听索引，不会自动回复。")
-        return "group_search"
-    if action == "search":
-        if not query:
-            client.send_message(chat_id, "请输入搜索关键词，例如：/search AI")
-        else:
-            client.send_message(chat_id, format_search_reply(query), parse_mode="HTML")
-        return "group_search"
-    return "not_group"
+    client.send_message(chat_id, format_search_reply(query), parse_mode="HTML")
+    return "group_search"
 
 
 def process_update(update: dict[str, Any], client: BotApiClient | None = None) -> str:
@@ -564,7 +529,8 @@ def run_polling(drop_webhook: bool = True, summary_interval: int | None = None) 
     stats = BotStats()
     interval = safe_summary_interval(summary_interval or load_summary_interval())
     print("✅ TG 索引统一 bot.py 已启动。按 Ctrl+C 停止。")
-    print("✅ 使用同一个 TELEGRAM_BOT_TOKEN 同时处理：监听索引 + 私聊搜索回复 + 群内指令搜索。")
+    print("✅ 使用同一个 TELEGRAM_BOT_TOKEN 同时处理：监听索引 + 私聊搜索回复 + 群内 @ 机器人搜索。")
+    print("✅ 群内只响应：@机器人用户名 关键词。普通群消息只索引，不自动回复。")
     print("✅ allowed_updates:", ", ".join(ALLOWED_UPDATES))
     print(f"✅ 一个 Bot 进程同时监听所有已开启的频道/群组。终端每 {interval} 秒打印一次汇总。")
     offset: int | None = None
@@ -649,7 +615,7 @@ def run_webhook_server(host: str, port: int, secret: str = "", summary_interval:
     server.bot_stats = BotStats()
     server.summary_interval = safe_summary_interval(summary_interval or load_summary_interval())
     print(f"✅ 统一 bot.py Webhook 服务已启动：http://{host}:{port}/tg-webhook")
-    print(f"✅ 一个 Bot 进程处理监听索引 + 私聊搜索回复 + 群内指令搜索。终端每 {server.summary_interval} 秒汇总。")
+    print(f"✅ 一个 Bot 进程处理监听索引 + 私聊搜索回复 + 群内 @ 机器人搜索。终端每 {server.summary_interval} 秒汇总。")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
