@@ -93,6 +93,8 @@ class BotApiClient:
         text: str,
         disable_web_page_preview: bool = True,
         parse_mode: str | None = None,
+        reply_to_message_id: int | None = None,
+        allow_sending_without_reply: bool = True,
     ) -> Any:
         payload: dict[str, Any] = {
             "chat_id": chat_id,
@@ -101,6 +103,9 @@ class BotApiClient:
         }
         if parse_mode:
             payload["parse_mode"] = parse_mode
+        if reply_to_message_id:
+            payload["reply_to_message_id"] = int(reply_to_message_id)
+            payload["allow_sending_without_reply"] = bool(allow_sending_without_reply)
         return self.call("sendMessage", payload)
 
     def get_updates(self, offset: int | None = None, timeout: int = 30) -> list[dict[str, Any]]:
