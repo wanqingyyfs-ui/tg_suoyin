@@ -6,7 +6,7 @@
 1. 一个 Bot Token / 一个 Bot API / 一个进程；
 2. 监听已开启频道/群组并建立消息索引；
 3. 私聊搜索回复频道、群组、消息锚点；
-4. 群组里只有 @机器人用户名 关键词 才回复，普通群消息只索引不刷屏；
+4. 群组里只有 @机器人用户名 关键词 才回复，且引用触发它的那条消息；
 5. 搜索回复广告位；
 6. 媒体消息 emoji、视频/音频时长、文件格式和大小；
 7. 无文本媒体不收录；回复文本的媒体用被回复文本索引，但锚链接指向当前媒体消息。
@@ -481,12 +481,18 @@ def handle_group_message(client: BotApiClient, message: dict[str, Any]) -> str:
     if chat.get("type") not in {"group", "supergroup"}:
         return "not_group"
     chat_id = chat.get("id")
+    message_id = message.get("message_id")
     if not chat_id:
         return "ignored"
     query = group_mention_query(client, message)
     if not query:
         return "not_group"
-    client.send_message(chat_id, format_search_reply(query), parse_mode="HTML")
+    client.send_message(
+        chat_id,
+        format_search_reply(query),
+        parse_mode="HTML",
+        reply_to_message_id=int(message_id) if message_id else None,
+    )
     return "group_search"
 
 
@@ -530,7 +536,7 @@ def run_polling(drop_webhook: bool = True, summary_interval: int | None = None) 
     interval = safe_summary_interval(summary_interval or load_summary_interval())
     print("✅ TG 索引统一 bot.py 已启动。按 Ctrl+C 停止。")
     print("✅ 使用同一个 TELEGRAM_BOT_TOKEN 同时处理：监听索引 + 私聊搜索回复 + 群内 @ 机器人搜索。")
-    print("✅ 群内只响应：@机器人用户名 关键词。普通群消息只索引，不自动回复。")
+    print("✅ 群内只响应：@机器人用户名 关键词，并引用触发消息。普通群消息只索引，不自动回复。")
     print("✅ allowed_updates:", ", ".join(ALLOWED_UPDATES))
     print(f"✅ 一个 Bot 进程同时监听所有已开启的频道/群组。终端每 {interval} 秒打印一次汇总。")
     offset: int | None = None
