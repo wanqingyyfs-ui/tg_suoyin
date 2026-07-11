@@ -7,6 +7,14 @@ https://github.com/wanqingyyfs-ui/tg_suoyin
 
 历史名称：rectg。主数据库文件名暂时保留为 data/rectg.db。
 
+## 详细使用与交接文档
+
+当前所有已实现功能、运行入口、Bot 行为、数据库结构、数据链路、控制中心、管理后台、前端构建、GitHub Actions、同步方式和故障排查统一记录在：
+
+- [项目使用与交接说明](./项目使用说明.md)
+
+新的开发对话或维护人员应先阅读该文档，再读取任务相关源码。
+
 ## 当前状态
 
 项目当前使用 SQLite 作为长期维护源，不再把 README 当作主数据源。
@@ -49,6 +57,16 @@ data/rectg.db -> scripts/categorize.py -> scripts/export_frontend_data.py -> web
 配套筛选器项目数据链路：
 
 tg_shaixuan 导出文件 -> scripts/import_collected_links.py -> links 表 -> scripts/crawl.py --new -> entries 表 -> npm run rebuild。
+
+## 当前运行入口
+
+- Telegram Bot：`python bot.py poll` 或 `./run_bot.ps1`
+- Windows 控制中心：双击 `TG-Suoyin-Control-Center.exe`，源码方式为 `python -m control_center`
+- 完整浏览器管理后台：`python scripts/admin_dashboard.py` 或 `npm run admin`
+- 前端开发：`npm run dev`
+- 先导出再构建前端：`npm run frontend:prepare`
+
+Bot 唯一公开入口是根目录 `bot.py`；`bot_core.py` 是底层模块；旧的 `scripts/bot.py` 已删除。
 
 ## 常用命令
 
@@ -93,13 +111,19 @@ python scripts/search_entries.py 网盘 --format json
 ## 主要文件
 
 - data/rectg.db：主数据库
+- bot.py：Telegram Bot 唯一公开入口和搜索交互层
+- bot_core.py：Bot polling、Webhook、消息索引和媒体处理底层
+- scripts/bot_api_client.py：Telegram Bot API 客户端
 - scripts/categories.py：分类顺序、默认分类和历史分类归并规则
 - scripts/categorize.py：文本清洗和 24 大类分类
 - scripts/filter_rules.py：旧脚本兼容空壳，不再执行内容过滤
 - scripts/export_frontend_data.py：导出前端数据、站点地图和 robots.txt
 - scripts/import_collected_links.py：导入 tg_shaixuan 审核通过的候选链接
 - scripts/search_entries.py：命令行搜索工具
+- scripts/message_indexer.py：消息锚点索引和监听数据结构
+- scripts/admin_dashboard.py：当前完整浏览器管理后台
 - scripts/manage_ads.py：广告位管理
+- control_center/：Windows 桌面控制中心源码
 - web/src：Astro 前端源码
 - web/public/data.json：前端静态数据
 - web/public/sitemap.xml：站点地图
@@ -114,4 +138,5 @@ python scripts/search_entries.py 网盘 --format json
 6. 部署前必须确认 data.json 和 sitemap.xml 已由最新数据库重新生成。
 7. tg_suoyin 只做抓取、分类、搜索、展示，不做内容行业过滤。
 8. tg_shaixuan 负责筛选、淘汰和审核；它输出给 tg_suoyin 的链接默认是可接受资源。
-9. 新增分类时必须同步更新 scripts/categories.py、scripts/categorize.py、scripts/export_frontend_data.py。
+9. Bot 统一从根目录 bot.py 启动，不恢复 scripts/bot.py。
+10. 详细当前行为以项目使用说明.md和实际代码为准。
