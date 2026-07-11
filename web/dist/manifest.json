@@ -1,0 +1,17 @@
+{
+    "name": "TG 索引 - Telegram 中文资源导航",
+    "short_name": "TG 索引",
+    "description": "Telegram 优质中文频道与群组导航",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f5f6fa",
+    "theme_color": "#2997ff",
+    "icons": [
+        {
+            "src": "/og-image.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

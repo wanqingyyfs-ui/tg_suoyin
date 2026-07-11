@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tg-suoyin.vercel.app/sitemap.xml
