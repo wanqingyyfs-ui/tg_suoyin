@@ -40,7 +40,7 @@ if (-not $Npm) {
     $Npm = Get-Command npm -ErrorAction Stop
 }
 
-& $VenvPython -m compileall -q "control_center" "scripts" "bot.py"
+& $VenvPython -m compileall -q "control_center" "control_center_app.py" "scripts" "bot.py"
 & $VenvPython "scripts\export_frontend_data.py"
 & $Npm.Source --prefix "web" run build
 
@@ -73,7 +73,7 @@ New-Item -ItemType Directory -Path $BuildRoot, $ExeDist, $Portable -Force | Out-
     --hidden-import "opencc" `
     --hidden-import "emoji" `
     --hidden-import "markdown" `
-    "control_center\__main__.py"
+    "control_center_app.py"
 
 $ExePath = Join-Path $ExeDist "TG-Suoyin-Control-Center.exe"
 if (-not (Test-Path $ExePath)) {
