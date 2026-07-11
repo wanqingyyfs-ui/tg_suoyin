@@ -31,11 +31,14 @@ TG-Suoyin-Control-Center.exe
 
 ```text
 bot.py
+bot_core.py
 scripts/
 data/rectg.db
 web/dist/
 .env
 ```
+
+Bot 的唯一公开入口是根目录 `bot.py`；`bot_core.py` 是统一 Bot 的底层实现模块，不是第二个独立启动入口。
 
 `.env`、日志、控制中心本地配置和数据库备份不会上传到 GitHub。首次拉取后，请从已有运行目录复制自己的 `.env`，或者在控制中心“设置”页面填写配置。
 
