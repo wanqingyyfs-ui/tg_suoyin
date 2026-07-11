@@ -1,0 +1,2 @@
+*.exe binary
+web/dist/** -text
