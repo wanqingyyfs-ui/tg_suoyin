@@ -15,7 +15,7 @@ import requests
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_TIMEOUT = 20
-ALLOWED_UPDATES = ["message", "edited_message", "channel_post", "edited_channel_post"]
+ALLOWED_UPDATES = ["message", "edited_message", "channel_post", "edited_channel_post", "callback_query"]
 
 
 class BotApiError(RuntimeError):
@@ -95,6 +95,7 @@ class BotApiClient:
         parse_mode: str | None = None,
         reply_to_message_id: int | None = None,
         allow_sending_without_reply: bool = True,
+        reply_markup: dict[str, Any] | None = None,
     ) -> Any:
         payload: dict[str, Any] = {
             "chat_id": chat_id,
@@ -106,7 +107,43 @@ class BotApiClient:
         if reply_to_message_id:
             payload["reply_to_message_id"] = int(reply_to_message_id)
             payload["allow_sending_without_reply"] = bool(allow_sending_without_reply)
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
         return self.call("sendMessage", payload)
+
+    def edit_message(
+        self,
+        chat_id: int | str,
+        message_id: int,
+        text: str,
+        disable_web_page_preview: bool = True,
+        parse_mode: str | None = None,
+        reply_markup: dict[str, Any] | None = None,
+    ) -> Any:
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": int(message_id),
+            "text": text,
+            "disable_web_page_preview": disable_web_page_preview,
+        }
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        try:
+            return self.call("editMessageText", payload)
+        except BotApiError as exc:
+            if "message is not modified" in str(exc).lower():
+                return None
+            raise
+
+    def answer_callback_query(self, callback_query_id: str, text: str = "", show_alert: bool = False) -> Any:
+        payload: dict[str, Any] = {"callback_query_id": callback_query_id}
+        if text:
+            payload["text"] = text[:200]
+        if show_alert:
+            payload["show_alert"] = True
+        return self.call("answerCallbackQuery", payload)
 
     def get_updates(self, offset: int | None = None, timeout: int = 30) -> list[dict[str, Any]]:
         payload: dict[str, Any] = {"timeout": timeout, "allowed_updates": ALLOWED_UPDATES}

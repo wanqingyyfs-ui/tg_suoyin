@@ -1,4 +1,4 @@
-﻿# 自动定位到脚本所在目录的父目录
+# 自动定位到脚本所在目录
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptDir
 
@@ -10,5 +10,5 @@ if (-not $env:TELEGRAM_BOT_TOKEN) {
   $env:TELEGRAM_BOT_TOKEN = Read-Host "请输入 TELEGRAM_BOT_TOKEN"
 }
 
-# 启动 Bot
-python scripts\bot.py
+# 启动统一 Bot
+python bot.py poll

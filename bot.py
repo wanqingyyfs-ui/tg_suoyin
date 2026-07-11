@@ -1,460 +1,421 @@
 #!/usr/bin/env python3
-"""TG 索引统一 Bot 主程序。
+"""TG 索引统一 Bot 入口与 Telegram 搜索交互层。
 
-以后机器人相关开发统一改这个文件：bot.py。
-本文件包含完整功能，不依赖 bot_core.py：
-1. 一个 Bot Token / 一个 Bot API / 一个进程；
-2. 监听已开启频道/群组并建立消息索引；
-3. 私聊搜索回复频道、群组、消息锚点；
-4. 群组里只有 @机器人用户名 关键词 才回复，且引用触发它的那条消息；
-5. 搜索回复广告位；
-6. 媒体消息 emoji、视频/音频时长、文件格式和大小；
-7. 无文本媒体不收录；回复文本的媒体用被回复文本索引，但锚链接指向当前媒体消息。
+底层监听、消息索引、Webhook 和命令行功能保留在 bot_core.py；本文件负责
+搜索结果相关度、结果总数、按钮筛选和分页。机器人只保留以下六个按钮：
+全部、群频、消息、最新、上一页、下一页。
 """
 from __future__ import annotations
 
-import argparse
-import html
-import json
-import mimetypes
-import os
-import sys
+import hashlib
 import time
-import urllib.parse
-from dataclasses import dataclass, field
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
-ROOT_DIR = Path(__file__).resolve().parent
-SCRIPTS_DIR = ROOT_DIR / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
+import bot_core as core
+from bot_core import *  # noqa: F401,F403 - 保持原 bot.py 对外接口兼容
 
-from bot_api_client import ALLOWED_UPDATES, BotApiClient, get_bot_token, load_env_file, retry_sleep
-from message_indexer import index_message_if_enabled, open_db_with_schema, query_to_tokens
-from search_entries import search_entries
+RESULTS_PER_PAGE = 14
+MAX_SEARCH_CANDIDATES = 5000
+QUERY_CACHE_TTL_SECONDS = 86400
+QUERY_CACHE_MAX_ITEMS = 2048
 
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8899
-DEFAULT_SUMMARY_INTERVAL_SECONDS = 300
-MAX_REPLY_CHARS = 3900
-RESULT_DESC_CHARS = 20
-MAX_STORED_MESSAGE_TEXT_CHARS = 1000
-BOT_SEARCH_AD_POSITION = "bot_search_inline"
-MAX_BOT_ADS = 2
-AD_MEDALS = ("🥇", "🥈", "🥉")
+MODE_ALL = "all"
+MODE_GROUP_CHANNEL = "group_channel"
+MODE_MESSAGES = "messages"
+SORT_RELEVANCE = "relevance"
+SORT_LATEST = "latest"
+MODE_CODES = {MODE_ALL: "a", MODE_GROUP_CHANNEL: "g", MODE_MESSAGES: "m"}
+CODE_MODES = {value: key for key, value in MODE_CODES.items()}
+SORT_CODES = {SORT_RELEVANCE: "r", SORT_LATEST: "l"}
+CODE_SORTS = {value: key for key, value in SORT_CODES.items()}
+QUERY_CACHE: dict[str, tuple[str, float]] = {}
 
-ENTRY_EMOJI = {"channel": "📢", "group": "👥", "bot": "🤖"}
-MEDIA_EMOJI = {
-    "document": "📚",
-    "audio": "🎧",
-    "voice": "🎧",
-    "video": "🎬",
-    "video_note": "🎬",
-    "animation": "🎬",
-    "photo": "📸",
-    "text": "📃",
-}
-MEDIA_FALLBACK_TEXT = {
-    "document": "文件消息",
-    "audio": "音频消息",
-    "voice": "语音消息",
-    "video": "视频消息",
-    "video_note": "视频消息",
-    "animation": "视频消息",
-    "photo": "图片消息",
-    "text": "文本消息",
-}
+
+@dataclass(frozen=True)
+class SearchState:
+    keyword: str
+    mode: str = MODE_ALL
+    sort: str = SORT_RELEVANCE
+    page: int = 1
 
 
 @dataclass
-class BotStats:
-    window_started_at: float = field(default_factory=time.time)
-    updates: int = 0
-    indexed: int = 0
-    user_replies: int = 0
-    private_searches: int = 0
-    group_searches: int = 0
-    ignored: int = 0
-    errors: int = 0
-
-    def reset(self) -> None:
-        self.window_started_at = time.time()
-        self.updates = 0
-        self.indexed = 0
-        self.user_replies = 0
-        self.private_searches = 0
-        self.group_searches = 0
-        self.ignored = 0
-        self.errors = 0
+class SearchResponse:
+    text: str
+    reply_markup: dict[str, Any]
+    total: int
+    page: int
+    total_pages: int
+    has_more: bool
 
 
-def e(value: Any) -> str:
-    return html.escape(str(value or ""), quote=True)
-
-
-def compact_text(value: str | None) -> str:
-    return " ".join((value or "").split()).strip()
-
-
-def short_text(value: str | None, limit: int = RESULT_DESC_CHARS) -> str:
-    text = compact_text(value)
+def _datetime_score(value: Any) -> float:
+    text = core.compact_text(str(value or ""))
     if not text:
-        return "暂无简介"
-    return text if len(text) <= limit else text[:limit] + "…"
-
-
-def own_message_text(message: dict[str, Any]) -> str:
-    return compact_text(message.get("text") or message.get("caption") or "")
-
-
-def reply_message_text(message: dict[str, Any]) -> str:
-    replied = message.get("reply_to_message") or {}
-    if not isinstance(replied, dict):
-        return ""
-    return compact_text(replied.get("text") or replied.get("caption") or "")
-
-
-def index_source_text(message: dict[str, Any]) -> str:
-    return own_message_text(message) or reply_message_text(message)
-
-
-def message_media_type(message: dict[str, Any]) -> str:
-    if message.get("document"):
-        return "document"
-    if message.get("audio"):
-        return "audio"
-    if message.get("voice"):
-        return "voice"
-    if message.get("video"):
-        return "video"
-    if message.get("video_note"):
-        return "video_note"
-    if message.get("animation"):
-        return "animation"
-    if message.get("photo"):
-        return "photo"
-    return "text"
-
-
-def format_duration(seconds: Any) -> str:
+        return 0.0
     try:
-        total = int(seconds or 0)
-    except (TypeError, ValueError):
-        total = 0
-    if total <= 0:
-        return ""
-    hours = total // 3600
-    minutes = (total % 3600) // 60
-    secs = total % 60
-    return f"[{hours}:{minutes:02d}:{secs:02d}]" if hours else f"[{minutes:02d}:{secs:02d}]"
+        normalized = text[:-1] + "+00:00" if text.endswith("Z") else text
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.timestamp()
+    except (TypeError, ValueError, OSError, OverflowError):
+        return 0.0
 
 
-def format_file_size(size_bytes: Any) -> str:
-    try:
-        size = int(size_bytes or 0)
-    except (TypeError, ValueError):
-        size = 0
-    if size <= 0:
-        return ""
-    return f"{size / 1024 / 1024:.2f}MB"
+def _relevance_terms(keyword: str) -> list[str]:
+    full = core.compact_text(keyword).lower()
+    values = [full, *sorted(core.query_to_tokens(keyword), key=lambda item: (-len(item), item))]
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        token = core.compact_text(value).lower()
+        if len(token) < 2 or token in seen:
+            continue
+        seen.add(token)
+        result.append(token)
+        if len(result) >= 12:
+            break
+    return result
 
 
-def document_format(document: dict[str, Any]) -> str:
-    file_name = compact_text(document.get("file_name") or "")
-    suffix = Path(file_name).suffix.lower().lstrip(".") if file_name else ""
-    if suffix:
-        return suffix[:12]
-    mime_type = compact_text(document.get("mime_type") or "")
-    if mime_type:
-        guessed = mimetypes.guess_extension(mime_type) or ""
-        if guessed:
-            return guessed.lower().lstrip(".")[:12]
-        return mime_type.split("/")[-1].split(";")[0][:12] or "file"
-    return "file"
+def _relevance_score(keyword: str, primary: str = "", secondary: str = "", keyword_bag: str = "") -> int:
+    query = core.compact_text(keyword).lower()
+    primary_text = core.compact_text(primary).lower()
+    secondary_text = core.compact_text(secondary).lower()
+    bag_text = core.compact_text(keyword_bag).lower()
+    if not query:
+        return 0
+
+    score = 0
+    if primary_text == query:
+        score += 1200
+    elif query in primary_text:
+        score += 900
+    if secondary_text == query:
+        score += 800
+    elif query in secondary_text:
+        score += 650
+    if query in bag_text:
+        score += 550
+
+    terms = _relevance_terms(keyword)
+    matched = 0
+    weighted = 0
+    for term in terms:
+        if term in primary_text or term in secondary_text or term in bag_text:
+            matched += 1
+            weighted += min(len(term), 8) * 12
+    score += min(weighted, 360)
+    if terms and matched == len(terms):
+        score += 180
+    elif matched:
+        score += int(120 * matched / len(terms))
+    return score
 
 
-def message_media_meta(message: dict[str, Any]) -> str:
-    media_type = message_media_type(message)
-    if media_type == "document":
-        document = message.get("document") or {}
-        file_format = document_format(document)
-        size = format_file_size(document.get("file_size"))
-        if file_format and size:
-            return f"[{file_format} {size}]"
-        if file_format:
-            return f"[{file_format}]"
-        if size:
-            return f"[{size}]"
-        return ""
-    if media_type in {"audio", "voice", "video", "video_note", "animation"}:
-        payload = message.get(media_type) or {}
-        return format_duration(payload.get("duration"))
-    return ""
-
-
-def ensure_message_extra_columns(conn) -> None:
-    cols = {str(row["name"]) for row in conn.execute("PRAGMA table_info(message_index)").fetchall()}
-    changed = False
-    for name in ("text_preview", "media_type", "media_emoji", "media_meta", "index_source"):
-        if name not in cols:
-            conn.execute(f"ALTER TABLE message_index ADD COLUMN {name} TEXT")
-            changed = True
-    if changed:
-        conn.commit()
-
-
-def ensure_ads_table(conn) -> None:
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS ads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            position TEXT NOT NULL,
-            title TEXT NOT NULL,
-            description TEXT,
-            url TEXT NOT NULL,
-            image_url TEXT,
-            sort_order INTEGER DEFAULT 0,
-            enabled INTEGER DEFAULT 1,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+def _entry_type_candidates(
+    keyword: str,
+    entry_type: str | None,
+    sort: str,
+    limit: int,
+) -> tuple[list[dict[str, Any]], int]:
+    safe_limit = max(1, min(int(limit), MAX_SEARCH_CANDIDATES))
+    batch_size = min(100, safe_limit)
+    page = 1
+    items: list[dict[str, Any]] = []
+    total = 0
+    while len(items) < safe_limit:
+        result = core.search_entries(
+            keyword=keyword,
+            entry_type=entry_type,
+            limit=batch_size,
+            page=page,
+            sort="latest" if sort == SORT_LATEST else "relevance",
         )
-        """
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_ads_position_enabled_sort ON ads(position, enabled, sort_order, id)")
-    conn.commit()
+        if page == 1:
+            total = int(result.get("total") or 0)
+        batch = result.get("items", [])
+        if not batch:
+            break
+        items.extend(batch)
+        if not result.get("hasMore"):
+            break
+        page += 1
+    return items[:safe_limit], total
 
 
-def load_bot_ads(limit: int = MAX_BOT_ADS) -> list[dict[str, Any]]:
-    conn = open_db_with_schema()
-    try:
-        ensure_ads_table(conn)
-        rows = conn.execute(
-            """
-            SELECT id, title, description, url, sort_order
-            FROM ads
-            WHERE enabled=1 AND position=?
-            ORDER BY sort_order ASC, id ASC
-            LIMIT ?
-            """,
-            (BOT_SEARCH_AD_POSITION, max(1, min(int(limit or MAX_BOT_ADS), 5))),
-        ).fetchall()
-    finally:
-        conn.close()
-    return [dict(row) for row in rows]
+def _entry_candidates(keyword: str, mode: str, sort: str, limit: int) -> tuple[list[dict[str, Any]], int]:
+    entry_types: tuple[str | None, ...] = ("group", "channel") if mode == MODE_GROUP_CHANNEL else (None,)
+    candidates: list[dict[str, Any]] = []
+    total = 0
+    for entry_type in entry_types:
+        items, item_total = _entry_type_candidates(keyword, entry_type, sort, limit)
+        total += item_total
+        for item in items:
+            item_type = item.get("type") or ""
+            title = item.get("title") or item.get("username") or item.get("url") or "未命名"
+            desc = item.get("desc") or item.get("clean_desc") or item.get("description") or title
+            primary = " ".join(filter(None, [title, item.get("username") or ""]))
+            secondary = " ".join(filter(None, [desc, item.get("category") or "", item.get("url") or ""]))
+            score = _relevance_score(keyword, primary, secondary)
+            score += max(0, min(int(item.get("score") or 0), 500))
+            candidates.append(
+                {
+                    "emoji": core.ENTRY_EMOJI.get(item_type, "🔗"),
+                    "media_meta": "",
+                    "url": item.get("url") or "",
+                    "desc": desc,
+                    "score": score,
+                    "timestamp": _datetime_score(item.get("updated_at") or item.get("created_at")),
+                    "stable_id": int(item.get("id") or 0),
+                }
+            )
+    return candidates, total
 
 
-def ad_medal(rank: int) -> str:
-    return AD_MEDALS[rank - 1] if 1 <= rank <= len(AD_MEDALS) else "🏅"
-
-
-def format_ad_line(ad: dict[str, Any], rank: int) -> str:
-    title = compact_text(ad.get("title") or "广告")
-    desc = short_text(ad.get("description") or "", RESULT_DESC_CHARS)
-    url = compact_text(ad.get("url") or "")
-    link = f"<a href=\"{e(url)}\">{e(title)}</a>" if url else e(title)
-    return f"{ad_medal(rank)} {link}" + (f" — {e(desc)}" if desc and desc != "暂无简介" else "")
-
-
-def save_message_extra_fields(conn, message: dict[str, Any], source_text: str) -> None:
-    chat = message.get("chat") or {}
-    chat_id = chat.get("id")
-    message_id = message.get("message_id")
-    if chat_id is None or message_id is None:
-        return
-    ensure_message_extra_columns(conn)
-    media_type = message_media_type(message)
-    media_emoji = MEDIA_EMOJI.get(media_type, "📃")
-    media_meta = message_media_meta(message)
-    index_source = "self" if own_message_text(message) else "reply"
-    conn.execute(
-        """
-        UPDATE message_index
-        SET text_preview=?, media_type=?, media_emoji=?, media_meta=?, index_source=?, updated_at=datetime('now')
-        WHERE chat_id=? AND message_id=?
-        """,
-        (source_text[:MAX_STORED_MESSAGE_TEXT_CHARS], media_type, media_emoji, media_meta, index_source, int(chat_id), int(message_id)),
-    )
-    conn.commit()
-
-
-def index_message_with_text(conn, message: dict[str, Any]) -> bool:
-    source_text = index_source_text(message)
-    if not source_text:
-        return False
-    indexable_message = dict(message)
-    indexable_message["text"] = source_text
-    indexable_message.pop("caption", None)
-    indexed = index_message_if_enabled(conn, indexable_message)
-    if indexed:
-        save_message_extra_fields(conn, message, source_text)
-    return indexed
-
-
-def safe_summary_interval(value: int | str | None = None) -> int:
-    try:
-        seconds = int(value or os.environ.get("BOT_SUMMARY_INTERVAL_SECONDS") or DEFAULT_SUMMARY_INTERVAL_SECONDS)
-    except (TypeError, ValueError):
-        seconds = DEFAULT_SUMMARY_INTERVAL_SECONDS
-    return max(30, min(seconds, 86400))
-
-
-def load_summary_interval() -> int:
-    try:
-        conn = open_db_with_schema()
-        try:
-            row = conn.execute("SELECT value FROM listener_settings WHERE key='terminal_summary_interval_seconds'").fetchone()
-            return safe_summary_interval(row["value"] if row else None)
-        finally:
-            conn.close()
-    except Exception:
-        return safe_summary_interval(None)
-
-
-def print_summary(stats: BotStats, interval_seconds: int, force: bool = False) -> None:
-    elapsed = int(time.time() - stats.window_started_at)
-    if not force and elapsed < interval_seconds:
-        return
-    print(
-        "📊 Bot 汇总："
-        f"最近 {max(elapsed, 0)} 秒，收到更新 {stats.updates} 条，"
-        f"收录消息 {stats.indexed} 条，私聊搜索 {stats.private_searches} 次，"
-        f"群内搜索 {stats.group_searches} 次，客户回复 {stats.user_replies} 次，"
-        f"忽略 {stats.ignored} 条，错误 {stats.errors} 次。"
-    )
-    stats.reset()
-
-
-def get_update_message(update: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
-    for key in ("message", "edited_message", "channel_post", "edited_channel_post"):
-        value = update.get(key)
-        if isinstance(value, dict):
-            return key, value
-    return "", None
-
-
-def normalize_query(text: str) -> str:
-    value = compact_text(text)
-    if not value:
-        return ""
-    if value.startswith("/search"):
-        return value.split(maxsplit=1)[1].strip() if " " in value else ""
-    if value.startswith("/s "):
-        return value[3:].strip()
-    if value.startswith("/"):
-        return ""
-    return value
-
-
-def bot_username(client: BotApiClient) -> str:
-    try:
-        return compact_text(client.get_me().get("username") or "").lower()
-    except Exception:
-        return ""
-
-
-def group_mention_query(client: BotApiClient, message: dict[str, Any]) -> str:
-    text = compact_text(message.get("text") or "")
-    if not text:
-        return ""
-    chat = message.get("chat") or {}
-    if chat.get("type") not in {"group", "supergroup"}:
-        return ""
-    name = bot_username(client)
-    if not name:
-        return ""
-    lower = text.lower()
-    mention = f"@{name}"
-    if not lower.startswith(mention):
-        return ""
-    return text[len(mention):].strip()
-
-
-def search_message_results(keyword: str, limit: int = 8) -> list[dict[str, Any]]:
-    tokens = query_to_tokens(keyword)
+def _message_candidates(keyword: str, sort: str, limit: int) -> tuple[list[dict[str, Any]], int]:
+    tokens = core.query_to_tokens(keyword)
     if not tokens:
-        return []
-    conn = open_db_with_schema()
+        return [], 0
+    safe_limit = max(1, min(int(limit), MAX_SEARCH_CANDIDATES))
+    query_limit = min(
+        MAX_SEARCH_CANDIDATES,
+        max(safe_limit, RESULTS_PER_PAGE) * (4 if sort == SORT_RELEVANCE else 1),
+    )
+    conn = core.open_db_with_schema()
     try:
-        ensure_message_extra_columns(conn)
+        core.ensure_message_extra_columns(conn)
         clauses = ["lower(mi.keywords) LIKE ?" for _ in tokens]
         params = [f"%{token.lower()}%" for token in tokens]
+        where_sql = " OR ".join(clauses)
+        total = int(
+            conn.execute(
+                f"SELECT COUNT(*) AS c FROM message_index mi WHERE {where_sql}",
+                params,
+            ).fetchone()["c"]
+        )
         rows = conn.execute(
             f"""
             SELECT mi.*
             FROM message_index mi
-            WHERE {' OR '.join(clauses)}
+            WHERE {where_sql}
             ORDER BY datetime(COALESCE(mi.message_date, mi.updated_at, mi.created_at)) DESC, mi.id DESC
             LIMIT ?
             """,
-            [*params, max(1, min(int(limit or 8), 30))],
+            [*params, query_limit],
         ).fetchall()
     finally:
         conn.close()
+
     results: list[dict[str, Any]] = []
     for row in rows:
         media_type = row["media_type"] or "text"
-        desc = row["text_preview"] or MEDIA_FALLBACK_TEXT.get(media_type, "消息")
-        results.append({
-            "kind": "message",
-            "emoji": row["media_emoji"] or MEDIA_EMOJI.get(media_type, "📃"),
-            "media_meta": row["media_meta"] or "",
-            "url": row["link"],
-            "desc": desc,
-        })
-    return results
+        desc = row["text_preview"] or core.MEDIA_FALLBACK_TEXT.get(media_type, "消息")
+        results.append(
+            {
+                "emoji": row["media_emoji"] or core.MEDIA_EMOJI.get(media_type, "📃"),
+                "media_meta": row["media_meta"] or "",
+                "url": row["link"],
+                "desc": desc,
+                "score": _relevance_score(keyword, secondary=desc, keyword_bag=row["keywords"] or ""),
+                "timestamp": _datetime_score(row["message_date"] or row["updated_at"] or row["created_at"]),
+                "stable_id": int(row["id"] or 0),
+            }
+        )
+    return results, total
 
 
-def search_entry_results(keyword: str, limit: int = 6) -> list[dict[str, Any]]:
-    result = search_entries(keyword=keyword, limit=limit)
-    rows: list[dict[str, Any]] = []
-    for item in result.get("items", []):
-        entry_type = item.get("type") or ""
-        title = item.get("title") or item.get("username") or item.get("url") or "未命名"
-        desc = item.get("desc") or item.get("clean_desc") or item.get("description") or title
-        rows.append({
-            "kind": "entry",
-            "emoji": ENTRY_EMOJI.get(entry_type, "🔗"),
-            "media_meta": "",
-            "url": item.get("url") or "",
-            "desc": desc,
-        })
-    return rows
+def _cleanup_query_cache() -> None:
+    now = time.time()
+    for token, (_keyword, updated_at) in list(QUERY_CACHE.items()):
+        if now - updated_at > QUERY_CACHE_TTL_SECONDS:
+            QUERY_CACHE.pop(token, None)
+    if len(QUERY_CACHE) <= QUERY_CACHE_MAX_ITEMS:
+        return
+    overflow = len(QUERY_CACHE) - QUERY_CACHE_MAX_ITEMS
+    for token, _value in sorted(QUERY_CACHE.items(), key=lambda item: item[1][1])[:overflow]:
+        QUERY_CACHE.pop(token, None)
+
+
+def _cache_query(keyword: str) -> str:
+    _cleanup_query_cache()
+    normalized = core.compact_text(keyword)
+    token = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:20]
+    QUERY_CACHE[token] = (normalized, time.time())
+    return token
+
+
+def _cached_query(token: str) -> str:
+    _cleanup_query_cache()
+    cached = QUERY_CACHE.get(token)
+    if not cached:
+        return ""
+    keyword, _updated_at = cached
+    QUERY_CACHE[token] = (keyword, time.time())
+    return keyword
+
+
+def _callback_data(token: str, action: str, mode: str, sort: str, page: int) -> str:
+    return f"q:{token}:{action}:{MODE_CODES.get(mode, 'a')}:{SORT_CODES.get(sort, 'r')}:{max(1, int(page))}"
+
+
+def _keyboard(state: SearchState) -> dict[str, Any]:
+    token = _cache_query(state.keyword)
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "全部", "callback_data": _callback_data(token, "set", MODE_ALL, SORT_RELEVANCE, 1)},
+                {"text": "群频", "callback_data": _callback_data(token, "set", MODE_GROUP_CHANNEL, SORT_RELEVANCE, 1)},
+                {"text": "消息", "callback_data": _callback_data(token, "set", MODE_MESSAGES, SORT_RELEVANCE, 1)},
+                {"text": "最新", "callback_data": _callback_data(token, "set", state.mode, SORT_LATEST, 1)},
+            ],
+            [
+                {"text": "上一页", "callback_data": _callback_data(token, "prev", state.mode, state.sort, max(1, state.page - 1))},
+                {"text": "下一页", "callback_data": _callback_data(token, "next", state.mode, state.sort, state.page + 1)},
+            ],
+        ]
+    }
+
+
+def build_search_response(
+    keyword: str,
+    mode: str = MODE_ALL,
+    sort: str = SORT_RELEVANCE,
+    page: int = 1,
+) -> SearchResponse:
+    keyword = core.compact_text(keyword)
+    mode = mode if mode in MODE_CODES else MODE_ALL
+    sort = sort if sort in SORT_CODES else SORT_RELEVANCE
+    requested_page = max(1, int(page or 1))
+    fetch_limit = min(MAX_SEARCH_CANDIDATES, requested_page * RESULTS_PER_PAGE + RESULTS_PER_PAGE)
+
+    entries: list[dict[str, Any]] = []
+    entry_total = 0
+    if mode in {MODE_ALL, MODE_GROUP_CHANNEL}:
+        entries, entry_total = _entry_candidates(keyword, mode, sort, fetch_limit)
+
+    messages: list[dict[str, Any]] = []
+    message_total = 0
+    if mode in {MODE_ALL, MODE_MESSAGES}:
+        messages, message_total = _message_candidates(keyword, sort, fetch_limit)
+
+    total = entry_total + message_total
+    total_pages = max(1, (total + RESULTS_PER_PAGE - 1) // RESULTS_PER_PAGE)
+    safe_page = min(requested_page, total_pages)
+    results = entries + messages
+    key = (
+        (lambda item: (item["timestamp"], item["score"], item["stable_id"]))
+        if sort == SORT_LATEST
+        else (lambda item: (item["score"], item["timestamp"], item["stable_id"]))
+    )
+    results.sort(key=key, reverse=True)
+
+    start = (safe_page - 1) * RESULTS_PER_PAGE
+    page_results = results[start : start + RESULTS_PER_PAGE]
+    state = SearchState(keyword=keyword, mode=mode, sort=sort, page=safe_page)
+    lines = [f"🔎 搜索：{core.e(keyword)}，总计{total} 条相关结果"]
+    if total <= 0:
+        lines.append("未找到匹配结果。")
+    else:
+        ads = core.load_bot_ads()
+        if ads:
+            for rank, ad in enumerate(ads, 1):
+                lines.append(core.format_ad_line(ad, rank))
+            lines.append("")
+        for number, item in enumerate(page_results, start=start + 1):
+            prefix = f"{item.get('emoji') or '🔗'}{item.get('media_meta') or ''}"
+            anchor = core.short_text(item.get("desc"), core.RESULT_DESC_CHARS)
+            url = item.get("url") or ""
+            display = f'<a href="{core.e(url)}">{core.e(anchor)}</a>' if url else core.e(anchor)
+            lines.append(f"{number}. {prefix} {display}")
+
+    text = "\n".join(lines).strip()
+    return SearchResponse(
+        text=text,
+        reply_markup=_keyboard(state),
+        total=total,
+        page=safe_page,
+        total_pages=total_pages,
+        has_more=safe_page < total_pages,
+    )
 
 
 def format_search_reply(keyword: str) -> str:
-    results = search_entry_results(keyword, limit=6) + search_message_results(keyword, limit=8)
-    if not results:
-        return "未找到匹配结果。"
-    lines: list[str] = [f"🔎 搜索：{e(keyword)}"]
-    ads = load_bot_ads()
-    if ads:
-        for rank, ad in enumerate(ads, 1):
-            lines.append(format_ad_line(ad, rank))
-        lines.append("")
-    for index, item in enumerate(results, 1):
-        emoji = item.get("emoji") or "🔗"
-        media_meta = item.get("media_meta") or ""
-        prefix = f"{emoji}{media_meta}"
-        text = short_text(item.get("desc"), RESULT_DESC_CHARS)
-        url = item.get("url") or ""
-        display = f"<a href=\"{e(url)}\">{e(text)}</a>" if url else e(text)
-        lines.append(f"{index}. {prefix} {display}")
-    text = "\n".join(lines).strip()
-    if len(text) > MAX_REPLY_CHARS:
-        text = text[: MAX_REPLY_CHARS - 20] + "\n……结果过多，已截断。"
-    return text
+    return build_search_response(keyword).text
 
 
-def build_customer_reply(message: dict[str, Any]) -> str | None:
-    keyword = normalize_query(str(message.get("text") or ""))
-    if keyword:
-        return format_search_reply(keyword)
-    return None
+def _parse_callback(data: str) -> tuple[str, str, str, str, int] | None:
+    parts = (data or "").split(":")
+    if len(parts) != 6 or parts[0] != "q":
+        return None
+    _prefix, token, action, mode_code, sort_code, page_text = parts
+    mode = CODE_MODES.get(mode_code)
+    sort = CODE_SORTS.get(sort_code)
+    if action not in {"set", "prev", "next"} or not mode or not sort:
+        return None
+    try:
+        page = max(1, int(page_text))
+    except (TypeError, ValueError):
+        return None
+    return token, action, mode, sort, page
 
 
-def handle_private_message(client: BotApiClient, message: dict[str, Any]) -> str:
+def handle_callback_query(client: core.BotApiClient, callback_query: dict[str, Any]) -> str:
+    callback_id = str(callback_query.get("id") or "")
+    parsed = _parse_callback(str(callback_query.get("data") or ""))
+    message = callback_query.get("message") or {}
+    chat_id = (message.get("chat") or {}).get("id")
+    message_id = message.get("message_id")
+    if not parsed or not callback_id or not chat_id or not message_id:
+        if callback_id:
+            client.answer_callback_query(callback_id, "按钮状态无效，请重新发送关键词搜索。")
+        return "ignored"
+
+    token, action, mode, sort, page = parsed
+    keyword = _cached_query(token)
+    if not keyword:
+        client.answer_callback_query(callback_id, "分页状态已失效，请重新发送关键词搜索。")
+        return "user_reply"
+
+    response = build_search_response(keyword, mode=mode, sort=sort, page=page)
+    if action == "prev" and page <= 1:
+        client.answer_callback_query(callback_id, "已经是第一页。")
+        return "user_reply"
+    if action == "next" and response.page < page:
+        client.answer_callback_query(callback_id, "已经是最后一页。")
+        return "user_reply"
+
+    client.answer_callback_query(callback_id)
+    client.edit_message(
+        chat_id,
+        int(message_id),
+        response.text,
+        parse_mode="HTML",
+        reply_markup=response.reply_markup,
+    )
+    return "user_reply"
+
+
+def _send_search(
+    client: core.BotApiClient,
+    chat_id: int | str,
+    keyword: str,
+    reply_to_message_id: int | None = None,
+) -> None:
+    response = build_search_response(keyword)
+    client.send_message(
+        chat_id,
+        response.text,
+        parse_mode="HTML",
+        reply_to_message_id=reply_to_message_id,
+        reply_markup=response.reply_markup,
+    )
+
+
+def handle_private_message(client: core.BotApiClient, message: dict[str, Any]) -> str:
     chat = message.get("chat") or {}
     if chat.get("type") != "private":
         return "not_private"
@@ -463,20 +424,24 @@ def handle_private_message(client: BotApiClient, message: dict[str, Any]) -> str
         return "ignored"
     text = str(message.get("text") or "").strip()
     if text.startswith("/start") or text.startswith("/help"):
-        client.send_message(chat_id, "发送关键词即可搜索频道/群组和已监听到的消息锚点。\n也可以使用：/search 关键词")
+        client.send_message(
+            chat_id,
+            "发送关键词即可搜索频道/群组和已监听到的消息锚点。\n"
+            "也可以使用：/search 关键词\n"
+            "结果下方可使用：全部、群频、消息、最新、上一页、下一页。",
+        )
         return "user_reply"
+    keyword = core.normalize_query(text)
+    if keyword:
+        _send_search(client, chat_id, keyword)
+        return "private_search" if text.startswith("/search") or text.startswith("/s ") else "user_reply"
     if text.startswith("/search") or text.startswith("/s "):
-        keyword = normalize_query(text)
-        client.send_message(chat_id, format_search_reply(keyword) if keyword else "请输入搜索关键词，例如：/search AI", parse_mode="HTML")
+        client.send_message(chat_id, "请输入搜索关键词，例如：/search AI", parse_mode="HTML")
         return "private_search"
-    reply = build_customer_reply(message)
-    if reply:
-        client.send_message(chat_id, reply, parse_mode="HTML")
-        return "user_reply"
     return "ignored"
 
 
-def handle_group_message(client: BotApiClient, message: dict[str, Any]) -> str:
+def handle_group_message(client: core.BotApiClient, message: dict[str, Any]) -> str:
     chat = message.get("chat") or {}
     if chat.get("type") not in {"group", "supergroup"}:
         return "not_group"
@@ -484,21 +449,24 @@ def handle_group_message(client: BotApiClient, message: dict[str, Any]) -> str:
     message_id = message.get("message_id")
     if not chat_id:
         return "ignored"
-    query = group_mention_query(client, message)
-    if not query:
+    keyword = core.group_mention_query(client, message)
+    if not keyword:
         return "not_group"
-    client.send_message(
-        chat_id,
-        format_search_reply(query),
-        parse_mode="HTML",
-        reply_to_message_id=int(message_id) if message_id else None,
-    )
+    _send_search(client, chat_id, keyword, int(message_id) if message_id else None)
     return "group_search"
 
 
-def process_update(update: dict[str, Any], client: BotApiClient | None = None) -> str:
-    bot = client or BotApiClient()
-    _kind, message = get_update_message(update)
+def build_customer_reply(message: dict[str, Any]) -> str | None:
+    keyword = core.normalize_query(str(message.get("text") or ""))
+    return format_search_reply(keyword) if keyword else None
+
+
+def process_update(update: dict[str, Any], client: core.BotApiClient | None = None) -> str:
+    bot = client or core.BotApiClient()
+    callback_query = update.get("callback_query")
+    if isinstance(callback_query, dict):
+        return handle_callback_query(bot, callback_query)
+    _kind, message = core.get_update_message(update)
     if not message:
         return "ignored"
     private_result = handle_private_message(bot, message)
@@ -507,167 +475,23 @@ def process_update(update: dict[str, Any], client: BotApiClient | None = None) -
     group_result = handle_group_message(bot, message)
     if group_result != "not_group":
         return group_result
-    conn = open_db_with_schema()
+    conn = core.open_db_with_schema()
     try:
-        return "indexed" if index_message_with_text(conn, message) else "ignored"
+        return "indexed" if core.index_message_with_text(conn, message) else "ignored"
     finally:
         conn.close()
 
 
-def apply_result_to_stats(stats: BotStats, result: str) -> None:
-    if result == "indexed":
-        stats.indexed += 1
-    elif result == "private_search":
-        stats.private_searches += 1
-    elif result == "group_search":
-        stats.group_searches += 1
-    elif result == "user_reply":
-        stats.user_replies += 1
-    else:
-        stats.ignored += 1
+# 让底层 polling、webhook 和外部导入都使用同一套增强后的处理逻辑。
+core.format_search_reply = format_search_reply
+core.build_customer_reply = build_customer_reply
+core.handle_private_message = handle_private_message
+core.handle_group_message = handle_group_message
+core.process_update = process_update
 
-
-def run_polling(drop_webhook: bool = True, summary_interval: int | None = None) -> None:
-    load_env_file()
-    bot = BotApiClient(get_bot_token())
-    if drop_webhook:
-        bot.delete_webhook(drop_pending_updates=False)
-    stats = BotStats()
-    interval = safe_summary_interval(summary_interval or load_summary_interval())
-    print("✅ TG 索引统一 bot.py 已启动。按 Ctrl+C 停止。")
-    print("✅ 使用同一个 TELEGRAM_BOT_TOKEN 同时处理：监听索引 + 私聊搜索回复 + 群内 @ 机器人搜索。")
-    print("✅ 群内只响应：@机器人用户名 关键词，并引用触发消息。普通群消息只索引，不自动回复。")
-    print("✅ allowed_updates:", ", ".join(ALLOWED_UPDATES))
-    print(f"✅ 一个 Bot 进程同时监听所有已开启的频道/群组。终端每 {interval} 秒打印一次汇总。")
-    offset: int | None = None
-    last_interval_reload = time.time()
-    while True:
-        try:
-            updates = bot.get_updates(offset=offset, timeout=30)
-            for update in updates:
-                stats.updates += 1
-                update_id = int(update.get("update_id") or 0)
-                if update_id:
-                    offset = update_id + 1
-                try:
-                    apply_result_to_stats(stats, process_update(update, bot))
-                except Exception as exc:
-                    stats.errors += 1
-                    print(f"⚠️ 处理 update_id={update_id} 失败：{exc}", file=sys.stderr)
-            if time.time() - last_interval_reload >= 60:
-                interval = safe_summary_interval(summary_interval or load_summary_interval())
-                last_interval_reload = time.time()
-            print_summary(stats, interval)
-        except KeyboardInterrupt:
-            print_summary(stats, interval, force=True)
-            print("\n已停止 bot.py。")
-            return
-        except Exception as exc:
-            stats.errors += 1
-            print(f"⚠️ 轮询异常：{exc}", file=sys.stderr)
-            print_summary(stats, interval)
-            retry_sleep(5)
-
-
-class WebhookHandler(BaseHTTPRequestHandler):
-    server_version = "tg-suoyin-bot/1.0"
-
-    def log_message(self, fmt: str, *args: Any) -> None:
-        return
-
-    def send_json(self, status: int, payload: dict[str, Any]) -> None:
-        encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
-
-    def do_POST(self) -> None:
-        parsed = urllib.parse.urlparse(self.path)
-        if parsed.path != "/tg-webhook":
-            self.send_json(404, {"ok": False, "error": "not found"})
-            return
-        expected_secret = getattr(self.server, "secret_token", "")
-        if expected_secret and self.headers.get("X-Telegram-Bot-Api-Secret-Token", "") != expected_secret:
-            self.send_json(403, {"ok": False, "error": "bad secret"})
-            return
-        raw = self.rfile.read(int(self.headers.get("Content-Length", "0") or 0))
-        stats = getattr(self.server, "bot_stats", BotStats())
-        try:
-            update = json.loads(raw.decode("utf-8"))
-            stats.updates += 1
-            apply_result_to_stats(stats, process_update(update, getattr(self.server, "bot_client")))
-        except Exception as exc:
-            stats.errors += 1
-            print(f"⚠️ Webhook 处理失败：{exc}", file=sys.stderr)
-        interval = safe_summary_interval(getattr(self.server, "summary_interval", DEFAULT_SUMMARY_INTERVAL_SECONDS))
-        print_summary(stats, interval)
-        self.server.bot_stats = stats
-        self.send_json(200, {"ok": True})
-
-    def do_GET(self) -> None:
-        if urllib.parse.urlparse(self.path).path == "/healthz":
-            self.send_json(200, {"ok": True})
-        else:
-            self.send_json(404, {"ok": False, "error": "not found"})
-
-
-def run_webhook_server(host: str, port: int, secret: str = "", summary_interval: int | None = None) -> None:
-    load_env_file()
-    server = ThreadingHTTPServer((host, int(port)), WebhookHandler)
-    server.secret_token = secret
-    server.bot_client = BotApiClient(get_bot_token())
-    server.bot_stats = BotStats()
-    server.summary_interval = safe_summary_interval(summary_interval or load_summary_interval())
-    print(f"✅ 统一 bot.py Webhook 服务已启动：http://{host}:{port}/tg-webhook")
-    print(f"✅ 一个 Bot 进程处理监听索引 + 私聊搜索回复 + 群内 @ 机器人搜索。终端每 {server.summary_interval} 秒汇总。")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print_summary(server.bot_stats, server.summary_interval, force=True)
-        print("\n已停止 Webhook 服务。")
-
-
-def main() -> None:
-    load_env_file()
-    parser = argparse.ArgumentParser(description="TG 索引统一 Bot 主程序")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    p = sub.add_parser("poll", help="本地 long polling 运行统一 Bot")
-    p.add_argument("--keep-webhook", action="store_true")
-    p.add_argument("--summary-interval", type=int, default=None)
-
-    p = sub.add_parser("webhook-server", help="启动统一 Bot webhook HTTP 服务")
-    p.add_argument("--host", default=os.environ.get("BOT_WEBHOOK_HOST", DEFAULT_HOST))
-    p.add_argument("--port", type=int, default=int(os.environ.get("BOT_WEBHOOK_PORT", DEFAULT_PORT)))
-    p.add_argument("--secret", default=os.environ.get("BOT_WEBHOOK_SECRET", ""))
-    p.add_argument("--summary-interval", type=int, default=None)
-
-    p = sub.add_parser("set-webhook", help="向 Telegram 设置 webhook URL")
-    p.add_argument("url")
-    p.add_argument("--secret", default=os.environ.get("BOT_WEBHOOK_SECRET", ""))
-    p.add_argument("--drop-pending-updates", action="store_true")
-
-    p = sub.add_parser("delete-webhook", help="删除 Telegram webhook，切回 polling")
-    p.add_argument("--drop-pending-updates", action="store_true")
-
-    sub.add_parser("webhook-info", help="查看当前 webhook 状态")
-
-    args = parser.parse_args()
-    bot = BotApiClient(get_bot_token())
-    if args.command == "poll":
-        run_polling(drop_webhook=not args.keep_webhook, summary_interval=args.summary_interval)
-    elif args.command == "webhook-server":
-        run_webhook_server(args.host, args.port, args.secret, args.summary_interval)
-    elif args.command == "set-webhook":
-        ok = bot.set_webhook(args.url, secret_token=args.secret, drop_pending_updates=args.drop_pending_updates)
-        print("✅ webhook 已设置" if ok else "❌ webhook 设置失败")
-    elif args.command == "delete-webhook":
-        ok = bot.delete_webhook(drop_pending_updates=args.drop_pending_updates)
-        print("✅ webhook 已删除" if ok else "❌ webhook 删除失败")
-    elif args.command == "webhook-info":
-        print(json.dumps(bot.get_webhook_info(), ensure_ascii=False, indent=2))
+run_polling = core.run_polling
+run_webhook_server = core.run_webhook_server
+main = core.main
 
 
 if __name__ == "__main__":
