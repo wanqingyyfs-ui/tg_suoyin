@@ -40,7 +40,7 @@ if (-not $Npm) {
     $Npm = Get-Command npm -ErrorAction Stop
 }
 
-& $VenvPython -m compileall -q "control_center" "control_center_app.py" "scripts" "bot.py"
+& $VenvPython -m compileall -q "control_center" "control_center_app.py" "scripts" "bot.py" "bot_core.py"
 & $VenvPython "scripts\export_frontend_data.py"
 & $Npm.Source --prefix "web" run build
 
@@ -82,6 +82,7 @@ if (-not (Test-Path $ExePath)) {
 
 Copy-Item $ExePath $Portable
 Copy-Item "bot.py" $Portable
+Copy-Item "bot_core.py" $Portable
 Copy-Item "LICENSE" $Portable
 Copy-Item "README.md" $Portable
 Copy-Item "README-CONTROL-CENTER.md" $Portable
