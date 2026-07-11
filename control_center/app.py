@@ -6,12 +6,14 @@ from PySide6.QtCore import QLockFile
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from .runtime import APP_NAME, ROOT_DIR, apply_env, ensure_runtime_dirs
+from .stability import install_service_restart_guard
 from .window import MainWindow
 
 
 def run_gui() -> int:
     ensure_runtime_dirs()
     apply_env()
+    install_service_restart_guard()
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("tg-suoyin")
