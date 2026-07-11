@@ -11,7 +11,7 @@ def main() -> int:
     parser.add_argument("--utility", choices=("export", "db-backup", "frontend-build"))
     args = parser.parse_args()
     if args.service:
-        from .runtime import configure_child_stdio, run_service
+        from control_center.runtime import configure_child_stdio, run_service
 
         configure_child_stdio(args.service)
         try:
@@ -20,7 +20,7 @@ def main() -> int:
             traceback.print_exc()
             return 1
     if args.utility:
-        from .runtime import configure_child_stdio, run_utility
+        from control_center.runtime import configure_child_stdio, run_utility
 
         configure_child_stdio("control")
         try:
@@ -28,7 +28,7 @@ def main() -> int:
         except BaseException:
             traceback.print_exc()
             return 1
-    from .app import run_gui
+    from control_center.app import run_gui
 
     return run_gui()
 
