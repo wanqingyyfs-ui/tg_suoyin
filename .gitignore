@@ -37,6 +37,8 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+data/control_center.json
+data/control_center.secrets.json
 
 # =========================
 # Python
