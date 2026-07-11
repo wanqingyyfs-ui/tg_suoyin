@@ -256,11 +256,11 @@ def main():
         encoding="utf-8",
     )
 
-    print(f"✅ Generated data.json from SQLite: {OUT_FILE}")
-    print(f"✅ Categories: {len(categories)}")
-    print(f"✅ Types: {len(types)}")
-    print(f"✅ Items: {sum(len(c['items']) for t in types for c in t['categories'])}")
-    print(f"✅ Ads: {len(ads['items'])}")
+    print(f"Generated data.json from SQLite: {OUT_FILE}")
+    print(f"Categories: {len(categories)}")
+    print(f"Types: {len(types)}")
+    print(f"Items: {sum(len(c['items']) for t in types for c in t['categories'])}")
+    print(f"Ads: {len(ads['items'])}")
 
 
 if __name__ == "__main__":
