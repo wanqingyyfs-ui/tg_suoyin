@@ -40,6 +40,7 @@ if (-not $Npm) {
     $Npm = Get-Command npm -ErrorAction Stop
 }
 
+& $VenvPython -m compileall -q "control_center" "scripts" "bot.py"
 & $VenvPython "scripts\export_frontend_data.py"
 & $Npm.Source --prefix "web" run build
 
@@ -66,6 +67,12 @@ New-Item -ItemType Directory -Path $BuildRoot, $ExeDist, $Portable -Force | Out-
     --hidden-import "PySide6.QtCore" `
     --hidden-import "PySide6.QtGui" `
     --hidden-import "PySide6.QtWidgets" `
+    --hidden-import "requests" `
+    --hidden-import "bs4" `
+    --hidden-import "lxml" `
+    --hidden-import "opencc" `
+    --hidden-import "emoji" `
+    --hidden-import "markdown" `
     "control_center\__main__.py"
 
 $ExePath = Join-Path $ExeDist "TG-Suoyin-Control-Center.exe"
