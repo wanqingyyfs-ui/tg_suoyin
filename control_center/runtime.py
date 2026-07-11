@@ -276,12 +276,15 @@ def refresh_frontend_data() -> list[Path]:
         raise FileNotFoundError(f"缺少导出脚本：{export_script}")
     old_argv = sys.argv[:]
     old_cwd = Path.cwd()
+    old_sys_path = sys.path[:]
     try:
         os.chdir(ROOT_DIR)
+        sys.path.insert(0, str(export_script.parent))
         sys.argv = [str(export_script)]
         runpy.run_path(str(export_script), run_name="__main__")
     finally:
         sys.argv = old_argv
+        sys.path[:] = old_sys_path
         os.chdir(old_cwd)
     WEB_DIST_DIR.mkdir(parents=True, exist_ok=True)
     copied: list[Path] = []
