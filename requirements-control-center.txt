@@ -1,0 +1,4 @@
+# 桌面控制中心与 Windows 打包依赖
+-r requirements.txt
+PySide6>=6.8,<7
+PyInstaller>=6.11,<7
