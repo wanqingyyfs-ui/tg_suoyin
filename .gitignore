@@ -95,7 +95,7 @@ web/node_modules/
 # =========================
 .astro/
 web/.astro/
-web/dist/
+# web/dist is intentionally tracked so a fresh git pull is directly runnable.
 web/.vercel/
 web/.netlify/
 .vercel/
@@ -150,6 +150,9 @@ data/backups/
 *.old
 *.orig
 *.rej
+
+# Old portable folders are local backups, not repository content.
+TG-Suoyin-Control-Center-old-*/
 
 # Strange accidental files
 holds*
