@@ -1,0 +1,72 @@
+name: Build Windows Control Center
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "control_center/**"
+      - "scripts/**"
+      - "bot.py"
+      - "requirements*.txt"
+      - "package.json"
+      - "web/**"
+      - ".github/workflows/build-control-center.yml"
+  push:
+    branches: [main]
+    paths:
+      - "control_center/**"
+      - "scripts/**"
+      - "bot.py"
+      - "requirements*.txt"
+      - "package.json"
+      - "web/**"
+      - ".github/workflows/build-control-center.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-portable:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-control-center.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build portable control center
+        shell: pwsh
+        run: ./scripts/build_control_center.ps1
+
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $Hash = (Get-FileHash "dist/TG-Suoyin-Control-Center-portable.zip" -Algorithm SHA256).Hash.ToLower()
+          "$Hash  TG-Suoyin-Control-Center-portable.zip" | Set-Content "dist/TG-Suoyin-Control-Center-portable.zip.sha256" -Encoding ascii
+
+      - name: Upload Windows portable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: TG-Suoyin-Control-Center-Windows
+          path: |
+            dist/TG-Suoyin-Control-Center-portable.zip
+            dist/TG-Suoyin-Control-Center-portable.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
